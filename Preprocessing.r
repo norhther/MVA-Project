@@ -1,7 +1,10 @@
 library(tidyverse)
 library(lubridate)
 
-df <- read_csv("/Users/norhther/Desktop/openpowerlifting-2022-09-19-03cdaaf3.csv")
+df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\openipf-2022-09-14-30eb84bf.csv")
+
+df <- df %>%
+  filter(Sex != "Mx")
 
 #Looking good
 df %>%
@@ -29,7 +32,7 @@ df %>%
 #removing errors
 
 df <- df %>%
- mutate(Age = ifelse(Age <= 4, NA, Age))
+  mutate(Age = ifelse(Age <= 4, NA, Age))
 
 
 df %>%
@@ -83,7 +86,7 @@ df %>%
 df %>%
   filter(Squat1Kg == min(df$Squat1Kg, na.rm = T))
 
-#Seems that if the values are negative, we got a DQ!
+#Seems that if the values are negative, we got a bad lift!
 #Same with the others.
 
 df %>%
@@ -125,9 +128,10 @@ df %>%
   count(Country) %>%
   arrange(desc(n))
 
-
-df <- df %>%
-  mutate(Country = fct_lump_n(Country, 20))
+#Remove if we are not going to do anything with country, this
+#commented may deliver cool plots
+#df <- df %>%
+#  mutate(Country = fct_lump_n(Country, 20))
 
 #All na, remove
 df %>%
@@ -153,19 +157,12 @@ df %>%
 df <- df %>% 
   mutate(Federation = fct_lump_n(Federation, 40))
 
-
-df %>%
-  filter(is.na(Country) && !is.na(MeetCountry))
-
-df %>%
-  filter(!is.na(Country) && is.na(MeetCountry))
-
-df <- df %>%
-  mutate(MeetCountry = fct_lump_n(MeetCountry, 20))
+#Idem, leave meetcountry
+#df <- df %>%
+#  mutate(MeetCountry = fct_lump_n(MeetCountry, 20))
 
 
 # maybe remove meetstate, meettown and meetname
-
 df %>%
   count(MeetName) %>%
   arrange(desc(n))
@@ -180,112 +177,43 @@ df <- df %>%
          Bench1Kg, Bench2Kg, Bench3Kg,
          Deadlift1Kg, Deadlift2Kg, Deadlift3Kg,
          TotalKg, Place, Dots, Wilks, Glossbrenner,
-         Goodlift, Tested, Country, Federation, Date)
+         Goodlift, Tested, Country, Federation, Date, MeetCountry, 
+         MeetName)
 
 df <- df %>%
   mutate(Sex = as_factor(Sex),
          Event = as_factor(Event),
          Equipment = as_factor(Equipment),
          Tested = as_factor(Tested),
-         Date = as_date(Date)) 
+         Date = as_date(Date),
+         MeetCountry = as_factor(MeetCountry),
+         MeetName = as_factor(MeetName))
 
 
 ##################################################
 ##################################################
+
 
 library(ggcorrplot)
-
 numeric_cols <- df %>%
   select_if(is.numeric)
-
-round(cor(numeric_cols, use = "complete.obs"), 1) %>%
-  ggcorrplot()
-
-df <- df %>%
-  select(-Glossbrenner, -Wilks, -Dots)
-
-numeric_cols <- df %>%
-  select_if(is.numeric)
-
-#better now
-
-#############
-#### PCA ####
-#############
-
-library(tidymodels)
-
-pca_rec <- recipe(~., data = numeric_cols) %>%
-  step_normalize(all_predictors()) %>%
-  step_naomit(all_predictors()) %>%
-  step_pca(all_predictors()) 
-
-pca_prep <- prep(pca_rec)
-
-tidied_pca <- tidy(pca_prep, 3)
-
-tidied_pca %>%
-  filter(component %in% paste0("PC", 1:9)) %>%
-  mutate(component = fct_inorder(component)) %>%
-  ggplot(aes(value, terms, fill = terms)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~component, nrow = 1) +
-  labs(y = NULL)
-
-summary(pca_prep$steps[[3]]$res)
-
-juice(pca_prep) %>%
-  ggplot(aes(PC1, PC2)) +
-  geom_point(alpha = 0.7, size = 2) +
-  labs(color = NULL)
-
-pca_cumm <- as_data_frame(summary(pca_prep$steps[[3]]$res)$importance)[3, ] %>%
-  gather()
-
-pca_cumm %>%
-  mutate(key = fct_inorder(key)) %>%
-  ggplot(aes(x = key, y = value)) + geom_col(fill = "#91E5F8") 
-
-
-##Plotting
-
-df %>%
-  ggplot(aes(x = TotalKg, fill = Sex)) + geom_boxplot() + 
-  facet_wrap(~Sex) + scale_fill_viridis_d() 
-
-
-df %>%
-  filter(!is.na(Country)) %>%
-  ggplot(aes(x = TotalKg, fill = Country)) + 
-  geom_boxplot(show.legend = F) + 
-  facet_wrap(~Country) +
-  scale_fill_viridis_d() 
-
-
-df %>%
-  group_by(Date) %>%
-  summarize(m = median(TotalKg)) %>%
-  ggplot(aes(x = Date, y = m)) + geom_point() + geom_smooth()
-
-
-df %>%
-  mutate(Tested = as.numeric(Tested)) %>%
-  mutate(Tested = replace_na(Tested, 0)) %>%
-  group_by(Date) %>%
-  summarize(`number of tested` = sum(Tested)) %>%
-  ggplot(aes(x = Date, y = `number of tested`)) + geom_point(color = "#91E5F8", alpha = 0.8) + 
-  geom_smooth(color = "#0000F9")
-
 
 round(cor(numeric_cols, use = "complete.obs"), 1) %>%
   ggcorrplot(ggtheme = ggplot2::theme_gray,
              colors = c("#6D9EC1", "white", "#E46726"),
              lab = T, type = "lower")
+#After some viz, we can see that glossbrenner, wilks and dots are highly correlated
+#because is a linear combination of the lifts.
 
+df <- df %>%
+  select(-Glossbrenner, -Wilks, -Dots)
+
+
+#Remove variables of lifts with NAs, bc some records doesnt have them registered,
+#only total kg or not even those...
 
 df_aux <- df %>%
   filter_at(vars(colnames(df)[7:15]), all_vars(!is.na(.)))
-
 
 sapply(df_aux, function(x) sum(is.na(x))/nrow(df_aux))
 
@@ -299,70 +227,43 @@ df_aux %>%
 
 df_aux %>%
   group_by(Country) %>%
-  summarize(max(TotalKg, na.rm = T))
-
-
-
-##World map over total df
-library(viridis)
-world <- map_data("world")
-
-world %>%
-  merge(df %>%
-          group_by(Country) %>%
-          summarize(n = n()) %>%
-          mutate(country = Country), 
-        by.x = "region", by.y = "country", all.x = T) %>%
-  arrange(group, order) %>%
-  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
-  geom_polygon(color = "white", size = 0.2) +
-  scale_fill_viridis(option="magma", na.value = "gray90") +
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank())
-
-
-world %>%
-  merge(df %>%
-          group_by(Country) %>%
-          summarize(n = mean(TotalKg, na.rm = T)) %>%
-          mutate(country = Country), 
-        by.x = "region", by.y = "country", all.x = T) %>%
-  arrange(group, order) %>%
-  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
-  geom_polygon(color = "white", size = 0.2) +
-  scale_fill_viridis(option="mako", na.value = "gray90") +
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank()) + 
-  ggtitle("Mean KG lifted by country")
-
-
-world %>%
-  merge(df %>%
-          group_by(Country) %>%
-          summarize(n = mean(Age, na.rm = T)) %>%
-          mutate(country = Country), 
-        by.x = "region", by.y = "country", all.x = T) %>%
-  arrange(group, order) %>%
-  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
-  geom_polygon(color = "white", size = 0.2) +
-  scale_fill_viridis(option="mako", na.value = "gray90") +
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank()) + 
-  ggtitle("Mean Age by country")
-
- 
-# maybe number of tested divided by total 
+  summarize(max = max(TotalKg, na.rm = T)) %>%
+  arrange(desc(max))
 
 
 colnames(df)
-write_csv(df_aux, "/Users/norhther/Desktop/pseudo-preprocessed.csv")
-library(tidyverse)
 
 sapply(df %>% select_if(is.numeric), min, na.rm = T)
 sapply(df %>% select_if(is.numeric), max, na.rm = T)
+
+
+library(stringr)
+paste0("Lifted", str_sub(colnames(df_aux[,7:15]), end=-3), "?")
+
+
+df_aux <- df_aux %>%
+  mutate(across(7:15, abs, .names = "WeightTried{.col}"),
+         across(7:15, ~ +(.x >0), .names = "Lifted{.col}?"))
+
+
+df_aux <- df_aux %>%
+  mutate(Tested = as.character(Tested),
+         Tested = replace_na(Tested, "No"),
+         Tested = as_factor(Tested))
+
+
+sapply(df_aux, function(x) sum(is.na(x))/nrow(df_aux))
+
+library(tidymodels)
+preprocess_recipe <- recipe(~., data = df_aux) %>%
+  step_impute_knn(Age, Goodlift, BodyweightKg, TotalKg, Country, 
+                  neighbors = floor(sqrt(ncol(df_aux))))
+
+#apply a knn with k = sqrt(n_obs) -> good practical results
+
+preprocess_rec_prep <- prep(preprocess_recipe, df_aux)
+
+df_aux_preprocessed <- juice(preprocess_rec_prep)
+
+write_csv(df_aux_preprocessed, "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
+

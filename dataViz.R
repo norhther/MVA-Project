@@ -3,6 +3,10 @@ library(tidymodels)
 library(lubridate)
 library(ggcorrplot)
 library(Factoshiny)
+library(FactoMineR)
+library(factoextra)
+library(arules)
+
 
 df <- read_csv("/Users/norhther/Documents/GitHub/MVA-Project/df_preprocessed.csv")
 
@@ -125,8 +129,6 @@ world %>%
   ggtitle("Mean Age by country")
 
 
-
-
 #############
 #### MCA ####
 #############
@@ -152,4 +154,52 @@ plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), grah.ty
 summary(res.MCA)
 
 #Description of the axis
-#dimdesc(res.MCA)
+
+#measures the degree of association between variable categories and a particular axis
+fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # Avoid text overlapping
+             ggtheme = theme_minimal())
+
+#visualize the inertia kept by dimensions
+
+fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 45))
+
+#quality of representation  
+fviz_cos2(res.MCA, choice = "var", axes = 1:2)
+
+
+
+
+#############
+#### MFA ####
+#############
+
+df_mfa <- df %>%
+  mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
+  select(Sex, Equipment, Tested, Federation, ends_with("?"), where(is.numeric)) %>%
+  mutate(across(1:5, ~factor(.x))) 
+
+res.MFA <- MFA(df_mca,graph=FALSE)
+
+
+
+
+#############
+### Eclat ###
+#############
+
+#https://www.datarlabs.com/post/market-basket-optimisation-using-association-rule-mining
+
+df_eclat <- transactions(df_mca)
+
+itemFrequencyPlot(df_eclat, topN = 40)
+
+rules = eclat(data = df_eclat, 
+              parameter = list(support = 0.6, minlen = 2))
+
+
+inspect(sort(rules, by = 'support')[1:10])
+
+#Tested -> may imply better tournament so better lifters
+

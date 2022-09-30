@@ -7,8 +7,10 @@ library(FactoMineR)
 library(factoextra)
 library(arules)
 library(RColorBrewer)
-
+library(viridis)
 options(ggrepel.max.overlaps = Inf)
+
+
 
 df <- read_csv("/Users/norhther/Documents/GitHub/MVA-Project/df_preprocessed.csv")
 
@@ -59,78 +61,6 @@ pca_cumm %>%
   ggplot(aes(x = key, y = value)) + geom_col(fill = "#91E5F8") 
 
 
-##Plotting
-
-df %>%
-  ggplot(aes(x = TotalKg, fill = Sex)) + geom_boxplot() + 
-  facet_wrap(~Sex) + scale_fill_viridis_d() 
-
-
-df %>%
-  filter(!is.na(Country)) %>%
-  ggplot(aes(x = TotalKg, fill = Country)) + 
-  geom_boxplot(show.legend = F) + 
-  facet_wrap(~Country) +
-  scale_fill_viridis_d() 
-
-
-df %>%
-  group_by(Date) %>%
-  summarize(m = median(TotalKg)) %>%
-  ggplot(aes(x = Date, y = m)) + geom_point() + geom_smooth()
-
-
-df %>%
-  group_by(Tested) %>%
-  summarize(n = n()) %>%
-  ggplot(aes(x = Tested, y = n)) + geom_col()
-
-round(cor(numeric_cols, use = "complete.obs"), 1) %>%
-  ggcorrplot(ggtheme = ggplot2::theme_gray,
-             colors = c("#6D9EC1", "white", "#E46726"),
-             lab = T, type = "lower")
-
-
-
-##World map over total df
-library(viridis)
-world <- map_data("world")
-
-
-world %>%
-  merge(df %>%
-          group_by(Country) %>%
-          summarize(n = mean(TotalKg, na.rm = T)) %>%
-          mutate(country = Country), 
-        by.x = "region", by.y = "country", all.x = T) %>%
-  arrange(group, order) %>%
-  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
-  geom_polygon(color = "white", size = 0.2) +
-  scale_fill_viridis(option="mako", na.value = "gray90") +
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank()) + 
-  ggtitle("Mean KG lifted by country")
-
-
-world %>%
-  merge(df %>%
-          group_by(Country) %>%
-          summarize(n = mean(Age, na.rm = T)) %>%
-          mutate(country = Country), 
-        by.x = "region", by.y = "country", all.x = T) %>%
-  arrange(group, order) %>%
-  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
-  geom_polygon(color = "white", size = 0.2) +
-  scale_fill_viridis(option="mako", na.value = "gray90") +
-  theme_minimal() +
-  theme(axis.text = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank()) + 
-  ggtitle("Mean Age by country")
-
-
 #############
 #### MCA ####
 #############
@@ -165,8 +95,6 @@ fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 45))
 
 #quality of representation  
 fviz_cos2(res.MCA, choice = "var", axes = 1:2)
-
-
 
 
 #############
@@ -233,15 +161,14 @@ fviz_cos2(res.mfa, choice = "quanti.var", axes = 1)
 
 fviz_mfa_axes(res.mfa, geom = c("point", "text"), graph.type="ggplot", repel = T)
 
+
 ######Association Rules######
 
-#colors just because I can
-itemFrequencyPlot(df_apriori, topN = 20,
-                          col = brewer.pal(8, 'BuPu'),
-                          main = 'Relative Item Frequency Plot',
-                          type = "relative",
-                          ylab = "Item Frequency (Relative)")
-
+itemFrequencyPlot(transactions(df_mca), topN = 20,
+                  col = brewer.pal(8, 'BuPu'),
+                  main = 'Relative Item Frequency Plot',
+                  type = "relative",
+                  ylab = "Item Frequency (Relative)")
 
 #############
 ### Eclat ###
@@ -265,6 +192,10 @@ inspect(sort(rules_eclat, by = 'support')[1:10])
 #############
 
 df_apriori <- transactions(df_mca)
+
+#colors just because I can
+
+
 rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.8))
 
 inspect(rules_apriori[1:20])
@@ -280,5 +211,81 @@ df_mca %>% select(contains("3")) %>% group_by(`LiftedSquat3Kg?`) %>% summarize(n
 df_mca %>% select(contains("3")) %>% group_by(`LiftedBench3Kg?`) %>% summarize(n = n())
 df_mca %>% select(contains("3")) %>% group_by(`LiftedDeadlift3Kg?`) %>% summarize(n = n())
 
+
 ######Association Rules ENDS######
+
+
+
+
+
+###### Swag plots ######
+
+df %>%
+  ggplot(aes(x = TotalKg, fill = Sex)) + geom_boxplot() + 
+  facet_wrap(~Sex) + scale_fill_viridis_d() 
+
+
+df %>%
+  filter(!is.na(Country)) %>%
+  ggplot(aes(x = TotalKg, fill = Country)) + 
+  geom_boxplot(show.legend = F) + 
+  facet_wrap(~Country) +
+  scale_fill_viridis_d() 
+
+
+df %>%
+  group_by(Date) %>%
+  summarize(m = median(TotalKg)) %>%
+  ggplot(aes(x = Date, y = m)) + geom_point() + geom_smooth()
+
+
+df %>%
+  group_by(Tested) %>%
+  summarize(n = n()) %>%
+  ggplot(aes(x = Tested, y = n)) + geom_col()
+
+round(cor(numeric_cols, use = "complete.obs"), 1) %>%
+  ggcorrplot(ggtheme = ggplot2::theme_gray,
+             colors = c("#6D9EC1", "white", "#E46726"),
+             lab = T, type = "lower")
+
+
+
+##World map over total df
+world <- map_data("world")
+
+
+world %>%
+  merge(df %>%
+          group_by(Country) %>%
+          summarize(n = mean(TotalKg, na.rm = T)) %>%
+          mutate(country = Country), 
+        by.x = "region", by.y = "country", all.x = T) %>%
+  arrange(group, order) %>%
+  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
+  geom_polygon(color = "white", size = 0.2) +
+  scale_fill_viridis(option="mako", na.value = "gray90") +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank()) + 
+  ggtitle("Mean KG lifted by country")
+
+
+world %>%
+  merge(df %>%
+          group_by(Country) %>%
+          summarize(n = mean(Age, na.rm = T)) %>%
+          mutate(country = Country), 
+        by.x = "region", by.y = "country", all.x = T) %>%
+  arrange(group, order) %>%
+  ggplot(aes(x = long, y = lat, group = group, fill = n)) + 
+  geom_polygon(color = "white", size = 0.2) +
+  scale_fill_viridis(option="mako", na.value = "gray90") +
+  theme_minimal() +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank()) + 
+  ggtitle("Mean Age by country")
+
 

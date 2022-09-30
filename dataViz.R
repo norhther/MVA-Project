@@ -2,9 +2,9 @@ library(tidyverse)
 library(tidymodels)
 library(lubridate)
 library(ggcorrplot)
+library(Factoshiny)
 
-
-df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
+df <- read_csv("/Users/norhther/Documents/GitHub/MVA-Project/df_preprocessed.csv")
 
 numeric_cols <- df %>%
   select_if(is.numeric)
@@ -127,4 +127,29 @@ world %>%
 
 
 
+#############
+#### MCA ####
+#############
 
+df_mca <- df %>%
+  mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
+  select(Sex, Equipment, Tested, Federation, ends_with("?")) %>%
+  mutate(across(1:5, ~factor(.x))) 
+#%>% sample_n(1000)
+
+#result <- Factoshiny(df_mca)
+
+###...
+library(ggrepel)
+options(ggrepel.max.overlaps = Inf)
+
+res.MCA <- MCA(df_mca,graph=FALSE)
+plot.MCA(res.MCA, choix='var')
+plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), grah.type="ggplot") + 
+  geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
+
+#Values 
+summary(res.MCA)
+
+#Description of the axis
+#dimdesc(res.MCA)

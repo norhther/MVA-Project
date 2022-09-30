@@ -6,7 +6,9 @@ library(Factoshiny)
 library(FactoMineR)
 library(factoextra)
 library(arules)
+library(RColorBrewer)
 
+options(ggrepel.max.overlaps = Inf)
 
 df <- read_csv("/Users/norhther/Documents/GitHub/MVA-Project/df_preprocessed.csv")
 
@@ -141,13 +143,9 @@ df_mca <- df %>%
 
 #result <- Factoshiny(df_mca)
 
-###...
-library(ggrepel)
-options(ggrepel.max.overlaps = Inf)
-
 res.MCA <- MCA(df_mca,graph=FALSE)
 plot.MCA(res.MCA, choix='var')
-plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), grah.type="ggplot") + 
+plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), graph.type="ggplot") + 
   geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
 
 #Values 
@@ -180,9 +178,69 @@ df_mfa <- df %>%
   select(Sex, Equipment, Tested, Federation, ends_with("?"), where(is.numeric)) %>%
   mutate(across(1:5, ~factor(.x))) 
 
-res.MFA <- MFA(df_mca,graph=FALSE)
+#We have to decide groups
+
+# Lifter associated health and condition
+# Weight tried
+# Quality of the lifts
+
+df_mfa <- df_mfa %>%
+  select(Age, BodyweightKg,
+         contains("WeightTried"),
+         ends_with("?"))
+
+res.mfa <- MFA(df_mfa, 
+               group = c(2, 9, 9), 
+               type = c("s", "s", "n"),
+               name.group = c("Lifter condition", "Weight tried", "Quality of the lift"),
+               graph = FALSE)
+
+head(get_eigenvalue(res.mfa))
+
+fviz_screeplot(res.mfa)
+
+group_mfa <- get_mfa_var(res.mfa, "group")
+fviz_mfa_var(res.mfa, "group")
+fviz_contrib(res.mfa, "group", axes = 1)
+fviz_contrib(res.mfa, "group", axes = 2)
+
+get_mfa_var(res.mfa, "quanti.var")
+
+fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"), legend = "bottom")
+
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 20,
+             palette = "jco")
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 2, top = 20,
+             palette = "jco")
+
+fviz_mfa_var(res.mfa, "quanti.var", col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             col.var.sup = "violet", repel = TRUE,
+             geom = c("point", "text"))
 
 
+fviz_mfa_var(res.mfa, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             col.var.sup = "violet", repel = TRUE, geom = c("point", "text"))
+
+fviz_cos2(res.mfa, choice = "quanti.var", axes = 1)
+
+#The graph of partial axes shows the relationship between the principal axes 
+#of the MFA and the ones obtained from analyzing each group using either a PCA 
+#(for groups of continuous variables) or a MCA (for qualitative variables).
+
+fviz_mfa_axes(res.mfa, geom = c("point", "text"), graph.type="ggplot", repel = T)
+
+######Association Rules######
+
+#colors just because I can
+itemFrequencyPlot(df_apriori, topN = 20,
+                          col = brewer.pal(8, 'BuPu'),
+                          main = 'Relative Item Frequency Plot',
+                          type = "relative",
+                          ylab = "Item Frequency (Relative)")
 
 
 #############
@@ -193,13 +251,34 @@ res.MFA <- MFA(df_mca,graph=FALSE)
 
 df_eclat <- transactions(df_mca)
 
-itemFrequencyPlot(df_eclat, topN = 40)
-
-rules = eclat(data = df_eclat, 
+rules_eclat = eclat(data = df_eclat, 
               parameter = list(support = 0.6, minlen = 2))
 
 
-inspect(sort(rules, by = 'support')[1:10])
+inspect(sort(rules_eclat, by = 'support')[1:10])
 
 #Tested -> may imply better tournament so better lifters
+
+
+#############
+## Apriori ##
+#############
+
+df_apriori <- transactions(df_mca)
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.8))
+
+inspect(rules_apriori[1:20])
+
+#Quick check
+df_mca %>% select(contains("1")) %>% group_by(`LiftedSquat1Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("1")) %>% group_by(`LiftedBench1Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("1")) %>% group_by(`LiftedDeadlift1Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("2")) %>% group_by(`LiftedSquat2Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("2")) %>% group_by(`LiftedBench2Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("2")) %>% group_by(`LiftedDeadlift2Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("3")) %>% group_by(`LiftedSquat3Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("3")) %>% group_by(`LiftedBench3Kg?`) %>% summarize(n = n())
+df_mca %>% select(contains("3")) %>% group_by(`LiftedDeadlift3Kg?`) %>% summarize(n = n())
+
+######Association Rules ENDS######
 

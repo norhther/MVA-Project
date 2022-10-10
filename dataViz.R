@@ -8,11 +8,11 @@ library(factoextra)
 library(arules)
 library(RColorBrewer)
 library(viridis)
+library(ggrepel)
 options(ggrepel.max.overlaps = Inf)
 
 
-
-df <- read_csv("/Users/norhther/Documents/GitHub/MVA-Project/df_preprocessed.csv")
+df <- read_csv("~/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
 
 numeric_cols <- df %>%
   select_if(is.numeric)
@@ -53,13 +53,45 @@ juice(pca_prep) %>%
   geom_point(alpha = 0.7, size = 2) +
   labs(color = NULL)
 
-pca_cumm <- as_data_frame(summary(pca_prep$steps[[]]$res)$importance)[3, ] %>%
+pca_cumm <- as_data_frame(summary(pca_prep$steps[[2]]$res)$importance)[3, ] %>%
   gather()
 
 pca_cumm %>%
   mutate(key = fct_inorder(key)) %>%
   ggplot(aes(x = key, y = value)) + geom_col(fill = "#91E5F8") 
 
+
+# Better try with positive weight values
+
+pca_rec <- recipe(~., data = cols_zero_var %>% mutate_if(is.numeric, abs)) %>%
+  step_normalize(all_predictors()) %>%
+  step_pca(all_predictors()) 
+
+pca_prep <- prep(pca_rec)
+
+tidied_pca <- tidy(pca_prep, 2)
+
+tidied_pca %>%
+  filter(component %in% paste0("PC", 1:9)) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, nrow = 1) +
+  labs(y = NULL)
+
+summary(pca_prep$steps[[2]]$res)
+
+juice(pca_prep) %>%
+  ggplot(aes(PC1, PC2)) +
+  geom_point(alpha = 0.7, size = 2) +
+  labs(color = NULL)
+
+pca_cumm <- as_data_frame(summary(pca_prep$steps[[2]]$res)$importance)[3, ] %>%
+  gather()
+
+pca_cumm %>%
+  mutate(key = fct_inorder(key)) %>%
+  ggplot(aes(x = key, y = value)) + geom_col(fill = "#91E5F8") 
 
 #############
 #### MCA ####
@@ -83,6 +115,8 @@ summary(res.MCA)
 
 #Description of the axis
 
+#eigenvalues > 1/n_categories
+
 #measures the degree of association between variable categories and a particular axis
 fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
@@ -104,7 +138,8 @@ fviz_cos2(res.MCA, choice = "var", axes = 1:2)
 df_mfa <- df %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
   select(Sex, Equipment, Tested, Federation, ends_with("?"), where(is.numeric)) %>%
-  mutate(across(1:5, ~factor(.x))) 
+  mutate(across(1:5, ~factor(.x))) %>%
+  mutate_if(is.numeric, abs)
 
 #We have to decide groups
 
@@ -137,6 +172,8 @@ get_mfa_var(res.mfa, "quanti.var")
 fviz_mfa_var(res.mfa, "quanti.var", palette = "jco", 
              col.var.sup = "violet", repel = TRUE,
              geom = c("point", "text"), legend = "bottom")
+
+  
 
 fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 20,
              palette = "jco")

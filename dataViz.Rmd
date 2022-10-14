@@ -212,8 +212,31 @@ itemFrequencyPlot(transactions(df_mca), topN = 20,
                   type = "relative",
                   ylab = "Item Frequency (Relative)")
 ```
+- Association Rules
 
-- Eclat
+  Hyperparameters:
+  - Support: threshold (frequency of the minimum count)
+    number of appareances / number of entries
+    number of app. of a set / number of sets: item set
+    A and B presents (P(A u B)) / total number of transactions // ojo, es and
+    
+    Min support ideas for the hyperparameter
+    
+  - Confidence:
+    - close to 1 if possible
+
+Eclat same as apriori but changing horizontal layout to vertical (long to wide format)
+
+
+support: 
+confidence: 
+lift: kpi, correlation and independence between elements into the rule l
+  ift(a,b) = conf(a,b) / sup(b) = p(AuB) / P(A) * P(B)
+if a,b independent, p(AuB) = p(A)*p(B)
+if lift > 1, strongstrong
+if lift = 1, independent elements
+else not 
+coverage: kpi 
 
 ```{r}
 
@@ -222,7 +245,7 @@ itemFrequencyPlot(transactions(df_mca), topN = 20,
 df_eclat <- transactions(df_mca)
 
 rules_eclat = eclat(data = df_eclat, 
-              parameter = list(support = 0.6, minlen = 2))
+              parameter = list(support = 0.8,  minlen = 2))
 
 
 inspect(sort(rules_eclat, by = 'support')[1:10])
@@ -237,10 +260,7 @@ inspect(sort(rules_eclat, by = 'support')[1:10])
 
 df_apriori <- transactions(df_mca)
 
-#colors just because I can
-
-
-rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.8))
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.8, conf = 0.8)) #, minlen = 2))
 
 inspect(rules_apriori[1:20])
 

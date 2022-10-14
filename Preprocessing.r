@@ -259,7 +259,17 @@ preprocess_recipe <- recipe(~., data = df_aux) %>%
   step_impute_knn(Age, Goodlift, BodyweightKg, TotalKg, Country, 
                   neighbors = floor(sqrt(ncol(df_aux))))
 
+
+
 #apply a knn with k = sqrt(n_obs) -> good practical results
+# Cite as 
+#
+#Devroye, L., Györfi, L., & Lugosi, G. (1996). A Probabilistic Theory of Pattern Recognition. Springer. https://doi.org/10.1007/978-1-4612-0711-5. See chapters 5, 6, 11, 26.
+#
+#Stone, C. J. (1977). Consistent nonparametric regression. The Annals of Statistics, 5(4) 595 - 645. https://doi.org/10.1214/aos/1176343886
+
+#Chaudhuri, K., & Dasgupta, S. (2014). Rates of convergence for nearest neighbour classification. Advances in Neural Information Processing Systems 27, NIPS 2014. https://papers.nips.cc/paper/2014/hash/db957c626a8cd7a27231adfbf51e20eb-Abstract.html
+
 
 preprocess_rec_prep <- prep(preprocess_recipe, df_aux)
 

@@ -22,6 +22,24 @@ numeric_cols <- df %>%
 
 cols_zero_var <- df %>% 
   select(colnames(numeric_cols)[1:13])
+
+num_to_cat <- cols_zero_var %>%
+  transmute(
+    Age_class = ifelse(
+      Age < 12, "Kid", ifelse(
+      Age < 18, "Teenager", ifelse(
+      Age < 40, "Regular", "Veteran"))),
+    BodyWeight_class = ifelse(
+      BodyweightKg < 61, "61", ifelse(
+      BodyweightKg < 67, "67", ifelse(
+      BodyweightKg < 73, "73", ifelse(
+      BodyweightKg < 81, "81", ifelse(
+      BodyweightKg < 96, "96", ifelse(
+      BodyweightKg < 109, "109", ifelse(
+      BodyweightKg < 10000, "109+", "Error"
+    )))))))) %>%
+  mutate(Age_class = as_factor(Age_class),
+         BodyWeight_class = as_factor(BodyWeight_class))
 ```
 
 - Correlation plot
@@ -98,14 +116,14 @@ fviz_pca_ind(res.pca,
 ```
 
 
-
 - Multiple Correspondence Analysis
 
 ```{r}
 df_mca <- df %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
-  select(Sex, Equipment, Tested, Federation, ends_with("?")) %>%
-  mutate(across(1:5, ~factor(.x))) 
+  select(Sex, Equipment, Tested, Federation, Place, ends_with("?")) %>%
+  mutate(across(1:6, ~factor(.x))) %>%
+  cbind(num_to_cat)
 #%>% sample_n(1000)
 
 #result <- Factoshiny(df_mca)
@@ -138,13 +156,13 @@ fviz_cos2(res.MCA, choice = "var", axes = 1:2)
 
 - Multiple Factor Analysis
 
-
 ```{r}
 df_mfa <- df %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
-  select(Sex, Equipment, Tested, Federation, ends_with("?"), where(is.numeric)) %>%
+  select(Sex, Equipment, Tested, Federation, Place, ends_with("?"), where(is.numeric)) %>%
   mutate(across(1:5, ~factor(.x))) %>%
-  mutate_if(is.numeric, abs)
+  mutate_if(is.numeric, abs) %>%
+  cbind(num_to_cat)
 
 #We have to decide groups
 
@@ -155,12 +173,14 @@ df_mfa <- df %>%
 df_mfa <- df_mfa %>%
   select(Age, BodyweightKg,
          contains("WeightTried"),
-         ends_with("?"))
+         ends_with("?"),
+         Place)
 
 res.mfa <- MFA(df_mfa, 
-               group = c(2, 9, 9), 
-               type = c("s", "s", "n"),
-               name.group = c("Lifter condition", "Weight tried", "Quality of the lift"),
+               group = c(2, 9, 9, 1), 
+               ind.sup = c(4),
+               type = c("s", "s", "n", "n"),
+               name.group = c("Lifter condition", "Weight tried", "Quality of the lift", "Place"),
                graph = FALSE)
 
 head(get_eigenvalue(res.mfa))
@@ -202,6 +222,8 @@ fviz_cos2(res.mfa, choice = "quanti.var", axes = 1)
 #(for groups of continuous variables) or a MCA (for qualitative variables).
 
 fviz_mfa_axes(res.mfa, geom = c("point", "text"), graph.type="ggplot", repel = T)
+
+fviz_mfa_axes(res.mfa, repel = T)
 
 
 ######Association Rules######
@@ -258,6 +280,7 @@ inspect(sort(rules_eclat, by = 'support')[1:10])
 
 ```{r}
 
+
 df_apriori <- transactions(df_mca)
 
 rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.8, conf = 0.8)) #, minlen = 2))
@@ -265,15 +288,15 @@ rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.8, conf = 0.8)) #
 inspect(rules_apriori[1:20])
 
 #Quick check
-df_mca %>% select(contains("1")) %>% group_by(`LiftedSquat1Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("1")) %>% group_by(`LiftedBench1Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("1")) %>% group_by(`LiftedDeadlift1Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("2")) %>% group_by(`LiftedSquat2Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("2")) %>% group_by(`LiftedBench2Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("2")) %>% group_by(`LiftedDeadlift2Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("3")) %>% group_by(`LiftedSquat3Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("3")) %>% group_by(`LiftedBench3Kg?`) %>% summarize(n = n())
-df_mca %>% select(contains("3")) %>% group_by(`LiftedDeadlift3Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("1")) %>% group_by(`LiftedSquat1Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("1")) %>% group_by(`LiftedBench1Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("1")) %>% group_by(`LiftedDeadlift1Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("2")) %>% group_by(`LiftedSquat2Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("2")) %>% group_by(`LiftedBench2Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("2")) %>% group_by(`LiftedDeadlift2Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("3")) %>% group_by(`LiftedSquat3Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("3")) %>% group_by(`LiftedBench3Kg?`) %>% summarize(n = n())
+# df_mca %>% select(contains("3")) %>% group_by(`LiftedDeadlift3Kg?`) %>% summarize(n = n())
 
 ```
 

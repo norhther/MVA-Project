@@ -1,5 +1,7 @@
 library(tidyverse)
 library(lubridate)
+library(ggpubr)
+
 
 df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\openipf-2022-09-14-30eb84bf.csv")
 
@@ -17,6 +19,8 @@ df %>%
   top_n(20) %>%
   mutate(Sex = fct_reorder(Sex, n))
 
+
+
 #Mx? going to remove that, only 8
 
 df <- df %>%
@@ -31,6 +35,10 @@ df %>%
 
 #removing errors
 
+boxplot_age <- df %>%
+  ggplot(aes(x = Age)) + geom_boxplot() + 
+  ggtitle("Boxplot of Age after preprocessing")
+
 df <- df %>%
   mutate(Age = ifelse(Age <= 4, NA, Age))
 
@@ -38,8 +46,7 @@ df <- df %>%
 df %>%
   ggplot(aes(x = Age)) + geom_histogram()
 
-df %>%
-  ggplot(aes(x = Age)) + geom_boxplot()
+
 
 df %>%
   filter(Age == max(df$Age, na.rm = T))
@@ -60,7 +67,6 @@ df %>%
 #This is a mess and is not giving any info
 df %>%
   count(Division) 
-
 
 df %>%
   ggplot(aes(x = BodyweightKg)) + geom_histogram()
@@ -96,10 +102,14 @@ df %>%
 df %>%
   filter(TotalKg < 0)
 
-
-df %>%
+place_counted <- df %>%
   count(Place) %>%
-  arrange(desc(n))
+  top_n(30) %>%
+  mutate(Place = fct_reorder(Place, -n)) %>%
+  ggplot(aes(x = Place, y = n)) + geom_col() + 
+  ggtitle("Sorted count of top 30 Place categorical values after preprocessing")
+
+ggarrange(place_counted, boxplot_age)
 
 df <- df %>%
   mutate(Place = fct_lump_n(Place, 11))

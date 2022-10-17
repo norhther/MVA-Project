@@ -14,14 +14,20 @@ options(ggrepel.max.overlaps = Inf)
 ```
 
 Read data
+
 ```{r}
-df <- read_csv("~/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
+df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
 
 numeric_cols <- df %>%
   select_if(is.numeric)
 
-cols_zero_var <- df %>% 
-  select(colnames(numeric_cols)[1:13])
+cols_zero_var <- numeric_cols %>% 
+  select(colnames(numeric_cols)[1:2],
+         colnames(numeric_cols)[12:13],
+         colnames(numeric_cols)[32:ncol(numeric_cols)],
+         -TotalKg)
+
+
 
 num_to_cat <- cols_zero_var %>%
   transmute(
@@ -42,22 +48,19 @@ num_to_cat <- cols_zero_var %>%
          BodyWeight_class = as_factor(BodyWeight_class))
 ```
 
-- Correlation plot
+-   Correlation plot
+
 ```{r}
 round(cor(cols_zero_var, use = "complete.obs"), 1) %>%
   ggcorrplot()
 ```
-Remember that these correlations are using the negative values of the lift. Let's change that
 
-```{r}
-round(cor(cols_zero_var %>% mutate_if(is.numeric, abs), use = "complete.obs"), 1) %>%
-  ggcorrplot(method = "circle", type = "lower")
-```
 Makes sense
 
-- PCA
+-   PCA
+
 ```{r}
-pca_rec <- recipe(~., data = cols_zero_var %>% mutate_if(is.numeric, abs)) %>%
+pca_rec <- recipe(~., data = cols_zero_var) %>% 
   step_normalize(all_predictors()) %>%
   step_pca(all_predictors()) 
 
@@ -80,17 +83,19 @@ juice(pca_prep) %>%
   geom_point(alpha = 0.7, size = 2) +
   labs(color = NULL)
 
-pca_cumm <- as_data_frame(summary(pca_prep$steps[[2]]$res)$importance)[3, ] %>%
+pca_cumm <- as_tibble(summary(pca_prep$steps[[2]]$res)$importance)[3, ] %>%
   gather()
 
 pca_cumm %>%
   mutate(key = fct_inorder(key)) %>%
-  filter(key %in% paste0("PC", 1:5)) %>%
+  filter(key %in% paste0("PC", 1:10)) %>%
   ggplot(aes(x = key, y = value)) + geom_col(fill = "#91E5F8") 
 ```
+
 With factoextra
+
 ```{r}
-res.pca <- PCA(cols_zero_var %>% mutate_if(is.numeric, abs),  graph = FALSE)
+res.pca <- PCA(cols_zero_var, graph = FALSE)
 eig <- get_eig(res.pca)
 eig
 fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 50))
@@ -115,8 +120,7 @@ fviz_pca_ind(res.pca,
              )
 ```
 
-
-- Multiple Correspondence Analysis
+-   Multiple Correspondence Analysis
 
 ```{r}
 df_mca <- df %>%
@@ -154,7 +158,7 @@ fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 45))
 fviz_cos2(res.MCA, choice = "var", axes = 1:2)
 ```
 
-- Multiple Factor Analysis
+-   Multiple Factor Analysis
 
 ```{r}
 df_mfa <- df %>%
@@ -172,7 +176,8 @@ df_mfa <- df %>%
 
 df_mfa <- df_mfa %>%
   select(Age, BodyweightKg,
-         contains("WeightTried"),
+         Squat, SquatInc1, SquatInc2, Bench, BenchInc1, 
+         BenchInc2, Deadlift, DeadliftInc1, DeadliftInc2,
          ends_with("?"),
          Place)
 
@@ -234,31 +239,22 @@ itemFrequencyPlot(transactions(df_mca), topN = 20,
                   type = "relative",
                   ylab = "Item Frequency (Relative)")
 ```
-- Association Rules
 
-  Hyperparameters:
-  - Support: threshold (frequency of the minimum count)
-    number of appareances / number of entries
-    number of app. of a set / number of sets: item set
-    A and B presents (P(A u B)) / total number of transactions // ojo, es and
-    
-    Min support ideas for the hyperparameter
-    
-  - Confidence:
-    - close to 1 if possible
+-   Association Rules
+
+    Hyperparameters:
+
+    -   Support: threshold (frequency of the minimum count) number of appareances / number of entries number of app. of a set / number of sets: item set A and B presents (P(A u B)) / total number of transactions // ojo, es and
+
+        Min support ideas for the hyperparameter
+
+    -   Confidence:
+
+        -   close to 1 if possible
 
 Eclat same as apriori but changing horizontal layout to vertical (long to wide format)
 
-
-support: 
-confidence: 
-lift: kpi, correlation and independence between elements into the rule l
-  ift(a,b) = conf(a,b) / sup(b) = p(AuB) / P(A) * P(B)
-if a,b independent, p(AuB) = p(A)*p(B)
-if lift > 1, strongstrong
-if lift = 1, independent elements
-else not 
-coverage: kpi 
+support: confidence: lift: kpi, correlation and independence between elements into the rule l ift(a,b) = conf(a,b) / sup(b) = p(AuB) / P(A) \* P(B) if a,b independent, p(AuB) = p(A)\*p(B) if lift \> 1, strongstrong if lift = 1, independent elements else not coverage: kpi
 
 ```{r}
 
@@ -275,8 +271,7 @@ inspect(sort(rules_eclat, by = 'support')[1:10])
 #Tested -> may imply better tournament so better lifters
 ```
 
-
-- Apriori
+-   Apriori
 
 ```{r}
 
@@ -300,8 +295,7 @@ inspect(rules_apriori[1:20])
 
 ```
 
-
-- Swag plots
+-   Swag plots
 
 ```{r}
 df %>%
@@ -373,6 +367,3 @@ world %>%
   ggtitle("Mean Age by country")
 
 ```
-
-
-

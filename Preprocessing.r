@@ -285,5 +285,19 @@ preprocess_rec_prep <- prep(preprocess_recipe, df_aux)
 
 df_aux_preprocessed <- juice(preprocess_rec_prep)
 
+# Remove WeightTried and use the increments
+
+df_aux_preprocessed <- df_aux_preprocessed %>%
+  mutate(Squat = WeightTriedSquat1Kg,
+         SquatInc1 = WeightTriedSquat2Kg - WeightTriedSquat1Kg,
+         SquatInc2 = WeightTriedSquat3Kg - WeightTriedSquat2Kg,
+         Bench = WeightTriedBench1Kg,
+         BenchInc1 = WeightTriedBench2Kg - WeightTriedBench1Kg,
+         BenchInc2 = WeightTriedBench3Kg - WeightTriedBench2Kg,
+         Deadlift = WeightTriedDeadlift1Kg,
+         DeadliftInc1 = WeightTriedDeadlift2Kg - WeightTriedDeadlift1Kg,
+         DeadliftInc2 = WeightTriedDeadlift3Kg - WeightTriedDeadlift2Kg)
+         
+
 write_csv(df_aux_preprocessed, "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
 

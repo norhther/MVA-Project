@@ -1,0 +1,113 @@
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(ggcorrplot)
+library(Factoshiny)
+library(FactoMineR)
+library(factoextra)
+library(arules)
+library(RColorBrewer)
+library(viridis)
+library(ggrepel)
+options(ggrepel.max.overlaps = Inf)
+```
+
+Read data
+
+```{r}
+df <- read_csv("C:\\Users\\d2000\\Desktop\\MVA\\MVA-Project\\df_preprocessed.csv")
+```
+
+- Association Rules
+
+    Hyperparameters:
+
+    -   Support: threshold (frequency of the minimum count) number of appareances / number of entries number of app. of a set / number of sets: item set A and B presents (P(A u B)) / total number of transactions // ojo, es and
+
+        Min support ideas for the hyperparameter
+
+    -   Confidence:
+
+        -   close to 1 if possible
+
+Eclat same as apriori but changing horizontal layout to vertical (long to wide format)
+
+support: confidence: lift: kpi, correlation and independence between elements into the rule l ift(a,b) = conf(a,b) / sup(b) = p(AuB) / P(A) \* P(B) if a,b independent, p(AuB) = p(A)\*p(B) if lift \> 1, strongstrong if lift = 1, independent elements else not coverage: kpi
+
+
+-   Apriori
+
+```{r}
+
+df_rules <- df %>%
+  mutate(
+    Age_class = ifelse(
+      Age < 12, "Kid", ifelse(
+      Age < 18, "Teenager", ifelse(
+      Age < 40, "Regular", "Veteran"))),
+    BodyWeight_class = ifelse(
+      BodyweightKg < 61, "61", ifelse(
+      BodyweightKg < 67, "67", ifelse(
+      BodyweightKg < 73, "73", ifelse(
+      BodyweightKg < 81, "81", ifelse(
+      BodyweightKg < 96, "96", ifelse(
+      BodyweightKg < 109, "109", ifelse(
+      BodyweightKg < 10000, "109+", "Error"
+    ))))))),
+    Material = ifelse(
+      Equipment == "Raw", "Raw", ifelse(
+      Equipment != "Raw", "Equipment", "Error"
+      )
+    ),
+    # To obtain the Q1 and Q3 of the mean of the two increases
+    #summary(data.frame((df$DeadliftInc1 + df$DeadliftInc2)/2))
+    DeadliftInc1_class = ifelse(
+      DeadliftInc1 < 7.5, "Small", ifelse(
+      DeadliftInc1 < 12.5, "Median", "Big"
+      )
+    ),
+    #summary(data.frame((df$SquatInc1 + df$SquatInc2)/2))
+    DeadliftInc2_class = ifelse(
+      DeadliftInc2 < 7.5, "Small", ifelse(
+      DeadliftInc2 < 12.5, "Median", "Big"
+      )
+    ),
+    SquatInc1_class = ifelse(
+      SquatInc1 < 5, "Small", ifelse(
+      SquatInc1 < 10, "Median", "Big"
+      )
+    ),
+    SquatInc2_class = ifelse(
+      SquatInc2 < 5, "Small", ifelse(
+      SquatInc2 < 10, "Median", "Big"
+      )
+    ),
+    #summary(data.frame(df$BenchInc1 + df$BenchInc2))
+    BenchInc1_class = ifelse(
+      BenchInc1 < 7.5, "Small", ifelse(
+      BenchInc1 < 12.5, "Median", "Big"
+      )
+    ),
+    BenchInc2_class = ifelse(
+      BenchInc2 < 7.5, "Small", ifelse(
+      BenchInc2 < 12.5, "Median", "Big"
+      )
+    )
+    ) %>%
+  mutate(Age_class = as_factor(Age_class),
+         BodyWeight_class = as_factor(BodyWeight_class))
+
+
+df_rules <- df_rules %>%
+  mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
+  select(SquatInc1_class, SquatInc2_class, BenchInc1_class, BenchInc2_class, DeadliftInc1_class, DeadliftInc2_class, Age_class, Equipment, BodyWeight_class, Sex, Event, Equipment, Place, Tested, Place) %>%
+  mutate(across(1:13, ~factor(.x)))
+
+
+
+df_apriori <- transactions(df_rules)
+
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.80) , minlen=2, maxlen=2)
+
+inspect(head(sort(rules_apriori, by = 'lift'),20))

@@ -1,6 +1,7 @@
 ```{r}
 library(tidyverse)
 library(tidymodels)
+library(nortest)
 library(lubridate)
 library(ggcorrplot)
 library(Factoshiny)
@@ -9,6 +10,8 @@ library(factoextra)
 library(arules)
 library(RColorBrewer)
 library(viridis)
+library(tidytext)
+library(moments)
 library(ggrepel)
 options(ggrepel.max.overlaps = Inf)
 ```
@@ -69,13 +72,18 @@ ggplot(data_long, aes(x = value)) +    # Draw histogram & density
 
 
 
+
 univariate_vals <- data_long %>%
   group_by(name) %>%
   summarize(kurtosis = kurtosis(value),
             skewness = skewness(value),
             mean = mean(value),
             median = median(value),
-            sd = sd(value))
+            sd = sd(value),
+            Q1 = quantile(value, probs = 0.25),
+            Q3 = quantile(value, probs = 0.25),
+            max = max(value),
+            min = min(value))
 
 univariate_vals_long <- univariate_vals %>%
   pivot_longer(!name, names_to = "metric") %>% 
@@ -86,7 +94,7 @@ univariate_vals_long %>%
   facet_wrap(~metric, scales = "free") + coord_flip() 
 
 
-library(nortest)
+
 ad.test(cols_zero_var$Goodlift)
 ```
 
@@ -410,7 +418,6 @@ univariate_vals_long_cat <- df_mca %>%
   as.data.frame()
 
 
-library(tidytext)
 univariate_vals_long_cat %>% 
   group_by(name, value) %>%
   summarize(n = n()) %>%

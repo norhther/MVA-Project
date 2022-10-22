@@ -1,6 +1,7 @@
 ```{r include=FALSE}
 library(tidyverse)
 library(tidymodels)
+library(nortest)
 library(lubridate)
 library(ggcorrplot)
 library(Factoshiny)
@@ -9,6 +10,8 @@ library(factoextra)
 library(arules)
 library(RColorBrewer)
 library(viridis)
+library(tidytext)
+library(moments)
 library(ggrepel)
 options(ggrepel.max.overlaps = Inf)
 ```
@@ -56,6 +59,46 @@ round(cor(cols_zero_var, use = "complete.obs"), 1) %>%
 ```
 
 Makes sense
+
+```{r}
+data_long <- cols_zero_var %>%                          # Apply pivot_longer function
+  pivot_longer(colnames(cols_zero_var)) %>% 
+  as.data.frame()
+
+ggplot(data_long, aes(x = value)) +    # Draw histogram & density
+  geom_histogram(aes(y = ..density..)) + 
+  geom_density(col = "#1b98e0", size = .5) + 
+  facet_wrap(~ name, scales = "free")
+
+
+
+
+univariate_vals <- data_long %>%
+  group_by(name) %>%
+  summarize(kurtosis = kurtosis(value),
+            skewness = skewness(value),
+            mean = mean(value),
+            median = median(value),
+            sd = sd(value),
+            Q1 = quantile(value, probs = 0.25),
+            Q3 = quantile(value, probs = 0.25),
+            max = max(value),
+            min = min(value))
+
+univariate_vals_long <- univariate_vals %>%
+  pivot_longer(!name, names_to = "metric") %>% 
+  as.data.frame()
+
+univariate_vals_long %>% 
+  ggplot(aes(x = name, y = value)) + geom_col() + 
+  facet_wrap(~metric, scales = "free") + coord_flip() 
+
+
+
+ad.test(cols_zero_var$Goodlift)
+```
+
+
 
 -   PCA
 
@@ -721,3 +764,21 @@ world %>%
   ggtitle("Mean Age by country")
 
 ```
+
+
+```{r}
+univariate_vals_long_cat <- df_mca %>%
+  pivot_longer(colnames(df_mca), names_to = "name") %>% 
+  as.data.frame()
+
+
+univariate_vals_long_cat %>% 
+  group_by(name, value) %>%
+  summarize(n = n()) %>%
+  top_n(15, n) %>%
+  mutate(value = reorder_within(value, n, name)) %>%
+  ggplot(aes(x = value, y = n)) + geom_col() +
+  facet_wrap(~name, scale = "free") + coord_flip()
+
+```
+

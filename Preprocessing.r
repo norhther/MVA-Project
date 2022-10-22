@@ -1,6 +1,7 @@
 library(tidyverse)
 library(lubridate)
 library(ggpubr)
+library(ggcorrplot)
 
 
 df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\openipf-2022-09-14-30eb84bf.csv")
@@ -20,6 +21,15 @@ df %>%
   mutate(Sex = fct_reorder(Sex, n))
 
 
+corr_f <- df %>% 
+  select_if(is.numeric) %>%
+  cor(., use="complete.obs")
+  
+ggcorrplot(corr_f, hc.order = TRUE, type = "lower",
+           outline.col = "white",
+           ggtheme = ggplot2::theme_gray,
+           colors = c("#9A1663", "white", "#002E94"), lab = TRUE, lab_size = 3) + 
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1))
 
 #Mx? going to remove that, only 8
 
@@ -41,6 +51,7 @@ boxplot_age <- df %>%
 
 df <- df %>%
   mutate(Age = ifelse(Age <= 4, NA, Age))
+
 
 
 df %>%

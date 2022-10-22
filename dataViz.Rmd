@@ -312,15 +312,9 @@ itemFrequencyPlot(transactions(df_mca), topN = 20,
     -   "Date"
 
 ```{r}
-# Set seed for sampling
-set.seed(0)
+df_mfa <- df
 
-# Sample around 10%
-# sam <- sample(1:nrow(df), 30000)
-
-df_mfa <- df  # [sam,]
-
-# Date
+# Date to numeric
 df_mfa$Date <- as.numeric(format(as.Date(df_mfa$Date), "%Y%m%d"))
 
 # Preparation
@@ -329,11 +323,12 @@ df_mfa <- df_mfa %>%
   select(Sex, Equipment, Tested, Federation, Place, Country, ends_with("?"), where(is.numeric)) %>%
   mutate(across(1:6, ~factor(.x))) %>%
   mutate_if(is.numeric, abs) %>%
-  cbind(num_to_cat)  # [sam,]
+  cbind(num_to_cat)
 
+# Ordered Place
 df_mfa$Place <- factor(df_mfa$Place, order = TRUE, levels=c(1:10, "Other", "DQ"))
 
-# Country: Transform to top 10 and Other
+# Country transform to top 10 and Other
 top_10_names <- names(sort(table(df_mfa$Country), decreasing = T)[1:10])
 levels(df_mfa$Country) <- c(levels(df_mfa$Country), "Other")
 df_mfa[!(df_mfa$Country %in% top_10_names),]$Country <- "Other"
@@ -393,6 +388,8 @@ fviz_contrib(res.mfa, "group", axes = 2)
 fviz_contrib(res.mfa, "group", axes = 3)
 fviz_contrib(res.mfa, "group", axes = 4)
 ```
+
+
 ```{r}
 grad_col <- c("#00AFBB", "#E7B800", "#FC4E07")
 ```
@@ -452,14 +449,11 @@ fviz_mfa_axes(res.mfa, axes = c(2, 3), repel=T)
 ```
 
 ```{r}
-smpl <- sample(rownames(res.mfa$ind$coord), 30000)
-
 fviz_mfa_ind(
   res.mfa,
   axes = c(1, 2),
   habillage = "Place",
   addEllipses = TRUE,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   alpha.ind = 0.3,
@@ -469,7 +463,6 @@ fviz_mfa_ind(
   axes = c(2, 3),
   habillage = "Place",
   addEllipses = TRUE,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   alpha.ind = 0.3,
@@ -479,13 +472,15 @@ fviz_mfa_ind(
   axes = c(2, 4),
   habillage = "Place",
   addEllipses = TRUE,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   alpha.ind = 0.3,
   repel = T)
 ```
+
+
 ```{r}
+# Check individual summaries for a range in a particular dimension
 val <- 2.2
 cond <- res.mfa$ind$coord[,3] > val-0.2 & res.mfa$ind$coord[,3] < val+0.2
 summary(df_mfa[rownames(res.mfa$ind$coord)[cond],])
@@ -493,8 +488,6 @@ summary(df_mfa[rownames(res.mfa$ind$coord)[cond],])
 
 
 ```{r}
-smpl <- sample(rownames(res.mfa$ind$coord), 30000)
-
 ds <- c(3, 2)
 
 fviz_mfa_ind(
@@ -502,7 +495,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedSquat1Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -513,7 +505,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedBench1Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -524,7 +515,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedDeadlift1Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -533,8 +523,6 @@ fviz_mfa_ind(
 ```
 
 ```{r}
-smpl <- sample(rownames(res.mfa$ind$coord), 30000)
-
 ds <- c(3, 2)
 
 fviz_mfa_ind(
@@ -542,7 +530,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedSquat1Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -553,7 +540,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedSquat2Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -564,7 +550,6 @@ fviz_mfa_ind(
   axes = ds,
   habillage = "LiftedSquat3Kg?",
   addEllipses = T,
-  select.ind = list(name=smpl),
   geom = c("point"),
   col.ind = "black",
   pointsize = 1,
@@ -574,6 +559,8 @@ fviz_mfa_ind(
 
 
 ```{r}
+# Check individuals projections to a combined vector
+
 dir <- (
   res.mfa$quali.var$coord["LiftedSquat1Kg?_Not lifted",] +
   res.mfa$quali.var$coord["LiftedBench1Kg?_Not lifted",] +
@@ -595,18 +582,14 @@ summary(df_mfa[rownames(res.mfa$ind$coord)[proj > -5 & proj <= 0.1],])
 
 
 ```{r}
-smpl <- sample(rownames(res.mfa$ind$coord), 30000)
-
 fviz_ellipses(res.mfa,
               axes = c(1, 2),
               c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?"),
-              select.ind = list(name=smpl),
               geom = c("point"),
               repel = TRUE)
 fviz_ellipses(res.mfa,
               axes = c(2, 4),
               c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?"),
-              select.ind = list(name=smpl),
               geom = c("point"),
               repel = TRUE)
 ```
@@ -616,9 +599,11 @@ fviz_ellipses(res.mfa,
 library(plot3D)
 library(plot3Drgl)
 
+set.seed(0)
+
 ds <- c(2, 3, 4)
 
-# Individuals
+# Individuals (sample ~10%)
 smpl <- sample(rownames(res.mfa$ind$coord), 30000)
 px <- res.mfa$ind$coord[smpl,ds[1]]
 py <- res.mfa$ind$coord[smpl,ds[2]]
@@ -634,6 +619,10 @@ arrows3D(zeros, zeros, zeros, ax, ay, az, add=T, bty = "n")
 text3D(ax, ay, az, rownames(res.mfa$quali.var$coord), add=T, bty = "n")
 
 plotrgl()
+```
+
+```{r}
+fviz_mfa_ind(res.mfa, partial = c("1", "2", "3"), geom = c("point"), alpha.ind = 0.3)
 ```
 
 

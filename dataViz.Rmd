@@ -1,6 +1,7 @@
-```{r}
+```{r include=FALSE}
 library(tidyverse)
 library(tidymodels)
+library(nortest)
 library(lubridate)
 library(ggcorrplot)
 library(Factoshiny)
@@ -9,6 +10,8 @@ library(factoextra)
 library(arules)
 library(RColorBrewer)
 library(viridis)
+library(tidytext)
+library(moments)
 library(ggrepel)
 options(ggrepel.max.overlaps = Inf)
 ```
@@ -16,7 +19,7 @@ options(ggrepel.max.overlaps = Inf)
 Read data
 
 ```{r}
-df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
+df <- read_csv("df_preprocessed.csv")
 
 numeric_cols <- df %>%
   select_if(is.numeric)
@@ -56,6 +59,46 @@ round(cor(cols_zero_var, use = "complete.obs"), 1) %>%
 ```
 
 Makes sense
+
+```{r}
+data_long <- cols_zero_var %>%                          # Apply pivot_longer function
+  pivot_longer(colnames(cols_zero_var)) %>% 
+  as.data.frame()
+
+ggplot(data_long, aes(x = value)) +    # Draw histogram & density
+  geom_histogram(aes(y = ..density..)) + 
+  geom_density(col = "#1b98e0", size = .5) + 
+  facet_wrap(~ name, scales = "free")
+
+
+
+
+univariate_vals <- data_long %>%
+  group_by(name) %>%
+  summarize(kurtosis = kurtosis(value),
+            skewness = skewness(value),
+            mean = mean(value),
+            median = median(value),
+            sd = sd(value),
+            Q1 = quantile(value, probs = 0.25),
+            Q3 = quantile(value, probs = 0.25),
+            max = max(value),
+            min = min(value))
+
+univariate_vals_long <- univariate_vals %>%
+  pivot_longer(!name, names_to = "metric") %>% 
+  as.data.frame()
+
+univariate_vals_long %>% 
+  ggplot(aes(x = name, y = value)) + geom_col() + 
+  facet_wrap(~metric, scales = "free") + coord_flip() 
+
+
+
+ad.test(cols_zero_var$Goodlift)
+```
+
+
 
 -   PCA
 
@@ -125,37 +168,77 @@ fviz_pca_ind(res.pca,
 ```{r}
 df_mca <- df %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
-  select(Sex, Equipment, Tested, Federation, Place, ends_with("?")) %>%
+  select(Sex, Equipment, Tested, Place, ends_with("?")) %>%
   mutate(across(1:6, ~factor(.x))) %>%
   cbind(num_to_cat)
 #%>% sample_n(1000)
 
+
+df_mca$Age_class <- factor(df_mca$Age_class, levels = c('Kid', 'Teenager', 'Regular', 'Veteran'), ordered = TRUE)
+df_mca$BodyWeight_class <- factor(df_mca$BodyWeight_class, levels = c('61', '67', '73', '81', '96', '109', '109+'), ordered = TRUE)
+df_mca$Place<- factor(df_mca$Place, levels = c("DQ","Other","10","9","8","7","6","5","4","3","2","1"), ordered = TRUE)
+df_mca$DeadliftInc1_class<- factor(df_mca$DeadliftInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$DeadliftInc2_class<- factor(df_mca$DeadliftInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$SquatInc1_class<- factor(df_mca$SquatInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$SquatInc2_class<- factor(df_mca$SquatInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$BenchInc1_class<- factor(df_mca$BenchInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$BenchInc2_class<- factor(df_mca$BenchInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+
+
+
+
 #result <- Factoshiny(df_mca)
 
+
 res.MCA <- MCA(df_mca,graph=FALSE)
-plot.MCA(res.MCA, choix='var')
-plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), graph.type="ggplot") + 
-  geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
+
+#variables
+
+colors = palette.colors(ncol(df_mca),palette='Polychrome 36')
+colorsvar = colorsvar=rep(colors, times = c(2,3,2,12,2,2,2,2,2,2,2,2,2,4,7,3,3,3,3,3,3))
+plot.MCA(res.MCA, invisible='ind',label='var', axes=c(1,2), col.var = colorsvar,autoLab = 'yes', cex = .8)#AFEGIR LEGEND
+
+
+
+#contributions
+fviz_contrib(res.MCA, choice = "var", axes = 1,top= 15)
+
+
+plot.MCA(res.MCA, choix='var',axes=c(1,2),repel=TRUE, ggtheme = theme.minimal())
+
+#fviz_mca_var(res.MCA, choice = "var", axes=c(1,2), repel = TRUE, ggtheme = theme_minimal())
+#el de sobre no funciona bé
+
+
+#plot.MCA(res.MCA, choix='ind',label='var')
+#individuals
+plot.MCA(res.MCA, choix='ind',invisble = 'var',label='none', axes = c(1,2), habillage =1, autoLab = 'yes',res=300)#,cex=.6)
+
+fviz_mca_ind(res.MCA, axes= c(1,2), geom.ind = 'point', alpha.ind=.1)
+
+# plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), graph.type="ggplot") + 
+#   geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
 
 #Values 
 summary(res.MCA)
 
 #Description of the axis
 
-#eigenvalues > 1/n_categories
+#eigenvalues
+eigenvalues <- get_eigenvalue(res.MCA)
 
 #measures the degree of association between variable categories and a particular axis
-fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
-             repel = TRUE, # Avoid text overlapping
-             ggtheme = theme_minimal())
+# fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
+#              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+#              repel = TRUE, # Avoid text overlapping
+#              ggtheme = theme_minimal())
 
 #visualize the inertia kept by dimensions
 
-fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 45))
+fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 10))
 
 #quality of representation  
-fviz_cos2(res.MCA, choice = "var", axes = 1:2)
+# fviz_cos2(res.MCA, choice = "var", axes = 1:2)
 ```
 
 -   Multiple Factor Analysis
@@ -239,6 +322,349 @@ itemFrequencyPlot(transactions(df_mca), topN = 20,
                   type = "relative",
                   ylab = "Item Frequency (Relative)")
 ```
+
+
+## MFA
+
+-   Lifter attributes
+    -   "Country", "Sex"
+    -   "Age", "BodyweightKg"
+-   Lifter equipment
+    -   "Equipment"
+-   Lifter results
+    -   "Squat1Kg", "Squat2Kg", "Squat3Kg"
+    -   "Bench1Kg", "Bench2Kg", "Bench3Kg"
+    -   "Deadlift1Kg", "Deadlift2Kg", "Deadlift3Kg"
+    -   "TotalKg"
+    -   "Goodlift"
+    -   "WeightTriedSquat1Kg", "WeightTriedSquat2Kg", "WeightTriedSquat3Kg",
+    -   "WeightTriedBench1Kg", "WeightTriedBench2Kg", "WeightTriedBench3Kg"
+    -   "WeightTriedDeadlift1Kg", "WeightTriedDeadlift2Kg", "WeightTriedDeadlift3Kg"
+    -   "LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?"
+    -   "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?"
+    -   "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?"
+    -   "Squat", "SquatInc1", "SquatInc2"
+    -   "Bench", "BenchInc1", "BenchInc2"
+    -   "Deadlift", "DeadliftInc1", "DeadliftInc2"
+    -   "Place"
+-   Competition
+    -   "Event", "Federation", "MeetName", "MeetCountry", "Tested"
+    -   "Date"
+
+```{r}
+df_mfa <- df
+
+# Date to numeric
+df_mfa$Date <- as.numeric(format(as.Date(df_mfa$Date), "%Y%m%d"))
+
+# Preparation
+df_mfa <- df_mfa %>%
+  mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
+  select(Sex, Equipment, Tested, Federation, Place, Country, ends_with("?"), where(is.numeric)) %>%
+  mutate(across(1:6, ~factor(.x))) %>%
+  mutate_if(is.numeric, abs) %>%
+  cbind(num_to_cat)
+
+# Ordered Place
+df_mfa$Place <- factor(df_mfa$Place, order = TRUE, levels=c(1:10, "Other", "DQ"))
+
+# Country transform to top 10 and Other
+top_10_names <- names(sort(table(df_mfa$Country), decreasing = T)[1:10])
+levels(df_mfa$Country) <- c(levels(df_mfa$Country), "Other")
+df_mfa[!(df_mfa$Country %in% top_10_names),]$Country <- "Other"
+df_mfa$Country <- droplevels(df_mfa$Country)
+```
+
+```{r}
+# MFA
+groups <- list(
+  # "Lifter attributes"=list("n", c("Sex", "Age_class", "BodyWeight_class")),
+  # "Lifter attributes"=list("n", c("Sex", "Country")),
+  "Lifter attributes"=list("n", c("Sex")),
+  "Lifter condition"=list("s", c("Age", "BodyweightKg")),
+  #"Lifter equipment"=list("n", c("Equipment")),
+  "Lift tried"=list("s", c("Squat", "SquatInc1", "SquatInc2",
+                           "Bench", "BenchInc1", "BenchInc2",
+                           "Deadlift", "DeadliftInc1", "DeadliftInc2")),
+  "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
+                             "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
+                             "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
+  # Only using attempts 1 and 2
+  # "Lift tried"=list("s", c("Squat", "SquatInc1",
+  #                          "Bench", "BenchInc1",
+  #                          "Deadlift", "DeadliftInc1")),
+  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?",
+  #                            "LiftedBench1Kg?", "LiftedBench2Kg?",
+  #                            "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?")),
+  # Only using attempt 1
+  # "Lift tried"=list("s", c("Squat", "Bench", "Deadlift")),
+  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?")),
+  # "Competition"=list("n", c("Federation", "Tested")),
+  # "Date"=list("s", c("Date")),
+  "Place"=list("n", c("Place")))
+
+group_nums <- unname(sapply(groups, function(g) length(unlist(g[2]))))
+group_types <- unname(sapply(groups, function(g) unlist(g[1])))
+group_vars <- unname(unlist(sapply(groups, function(g) unlist(g[2]))))
+group_names <- names(groups)
+
+df_mfa <- df_mfa[, group_vars]
+
+res.mfa <- MFA(df_mfa,
+               group = group_nums,
+               type = group_types,
+               name.group = group_names,
+               num.group.sup = c(1),
+               graph = FALSE)
+
+head(get_eigenvalue(res.mfa), 20)
+res.mfa$inertia.ratio
+fviz_screeplot(res.mfa)
+```
+
+```{r}
+fviz_contrib(res.mfa, "group", axes = 1)
+fviz_contrib(res.mfa, "group", axes = 2)
+fviz_contrib(res.mfa, "group", axes = 3)
+fviz_contrib(res.mfa, "group", axes = 4)
+```
+
+
+```{r}
+grad_col <- c("#00AFBB", "#E7B800", "#FC4E07")
+```
+
+
+```{r}
+#dimdesc(res.mfa, axes = 1:2)
+
+fviz_mfa_var(
+  res.mfa, choice = "group", axes = c(1, 2),
+  col.var = "contrib", gradient.cols = grad_col)
+fviz_mfa_var(
+  res.mfa, choice = "group", axes = c(2, 3),
+  col.var = "contrib", gradient.cols = grad_col)
+fviz_mfa_var(
+  res.mfa, choice = "group", axes = c(3, 4),
+  col.var = "contrib", gradient.cols = grad_col)
+```
+
+```{r}
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 10)
+fviz_contrib(res.mfa, choice = "quali.var", axes = 1, top = 10)
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 2, top = 10)
+fviz_contrib(res.mfa, choice = "quali.var", axes = 2, top = 10)
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 3, top = 10)
+fviz_contrib(res.mfa, choice = "quali.var", axes = 3, top = 10)
+fviz_contrib(res.mfa, choice = "quanti.var", axes = 4, top = 10)
+fviz_contrib(res.mfa, choice = "quali.var", axes = 4, top = 10)
+```
+
+```{r}
+axes <- c(1, 2)
+fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+fviz_mfa_var(res.mfa, "quali.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+axes <- c(2, 3)
+fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+fviz_mfa_var(res.mfa, "quali.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+axes <- c(3, 4)
+fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+fviz_mfa_var(res.mfa, "quali.var", axes = axes,
+             select.var = list(cos2 = 20),
+             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+```
+
+```{r}
+fviz_mfa_axes(res.mfa, axes = c(2, 3), repel=T)
+```
+
+```{r}
+fviz_mfa_ind(
+  res.mfa,
+  axes = c(1, 2),
+  habillage = "Place",
+  addEllipses = TRUE,
+  geom = c("point"),
+  col.ind = "black",
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = c(2, 3),
+  habillage = "Place",
+  addEllipses = TRUE,
+  geom = c("point"),
+  col.ind = "black",
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = c(2, 4),
+  habillage = "Place",
+  addEllipses = TRUE,
+  geom = c("point"),
+  col.ind = "black",
+  alpha.ind = 0.3,
+  repel = T)
+```
+
+
+```{r}
+# Check individual summaries for a range in a particular dimension
+val <- 2.2
+cond <- res.mfa$ind$coord[,3] > val-0.2 & res.mfa$ind$coord[,3] < val+0.2
+summary(df_mfa[rownames(res.mfa$ind$coord)[cond],])
+```
+
+
+```{r}
+ds <- c(3, 2)
+
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedSquat1Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedBench1Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedDeadlift1Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+```
+
+```{r}
+ds <- c(3, 2)
+
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedSquat1Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedSquat2Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+fviz_mfa_ind(
+  res.mfa,
+  axes = ds,
+  habillage = "LiftedSquat3Kg?",
+  addEllipses = T,
+  geom = c("point"),
+  col.ind = "black",
+  pointsize = 1,
+  alpha.ind = 0.3,
+  repel = T)
+```
+
+
+```{r}
+# Check individuals projections to a combined vector
+
+dir <- (
+  res.mfa$quali.var$coord["LiftedSquat1Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedBench1Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedDeadlift1Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedSquat2Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedBench2Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedDeadlift2Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedSquat3Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedBench3Kg?_Not lifted",] +
+  res.mfa$quali.var$coord["LiftedDeadlift3Kg?_Not lifted",]
+)
+
+dir <- dir / sqrt(sum(dir^2))
+
+proj <- res.mfa$ind$coord %*% dir
+
+summary(df_mfa[rownames(res.mfa$ind$coord)[proj > -5 & proj <= 0.1],])
+```
+
+
+```{r}
+fviz_ellipses(res.mfa,
+              axes = c(1, 2),
+              c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?"),
+              geom = c("point"),
+              repel = TRUE)
+fviz_ellipses(res.mfa,
+              axes = c(2, 4),
+              c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?"),
+              geom = c("point"),
+              repel = TRUE)
+```
+
+
+```{r}
+library(plot3D)
+library(plot3Drgl)
+
+set.seed(0)
+
+ds <- c(2, 3, 4)
+
+# Individuals (sample ~10%)
+smpl <- sample(rownames(res.mfa$ind$coord), 30000)
+px <- res.mfa$ind$coord[smpl,ds[1]]
+py <- res.mfa$ind$coord[smpl,ds[2]]
+pz <- res.mfa$ind$coord[smpl,ds[3]]
+scatter3D(px, py, pz, colvar = proj[smpl,], pch = 20, cex = 0.5, bty = "n")
+
+# Variables
+zeros <- rep(0, nrow(res.mfa$quali.var$coord))
+ax <- res.mfa$quali.var$coord[,ds[1]]
+ay <- res.mfa$quali.var$coord[,ds[2]]
+az <- res.mfa$quali.var$coord[,ds[3]]
+arrows3D(zeros, zeros, zeros, ax, ay, az, add=T, bty = "n")
+text3D(ax, ay, az, rownames(res.mfa$quali.var$coord), add=T, bty = "n")
+
+plotrgl()
+```
+
+```{r}
+fviz_mfa_ind(res.mfa, partial = c("1", "2", "3"), geom = c("point"), alpha.ind = 0.3)
+```
+
 
 -   Association Rules
 
@@ -367,3 +793,21 @@ world %>%
   ggtitle("Mean Age by country")
 
 ```
+
+
+```{r}
+univariate_vals_long_cat <- df_mca %>%
+  pivot_longer(colnames(df_mca), names_to = "name") %>% 
+  as.data.frame()
+
+
+univariate_vals_long_cat %>% 
+  group_by(name, value) %>%
+  summarize(n = n()) %>%
+  top_n(15, n) %>%
+  mutate(value = reorder_within(value, n, name)) %>%
+  ggplot(aes(x = value, y = n)) + geom_col() +
+  facet_wrap(~name, scale = "free") + coord_flip()
+
+```
+

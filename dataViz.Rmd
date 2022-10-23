@@ -168,37 +168,77 @@ fviz_pca_ind(res.pca,
 ```{r}
 df_mca <- df %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
-  select(Sex, Equipment, Tested, Federation, Place, ends_with("?")) %>%
+  select(Sex, Equipment, Tested, Place, ends_with("?")) %>%
   mutate(across(1:6, ~factor(.x))) %>%
   cbind(num_to_cat)
 #%>% sample_n(1000)
 
+
+df_mca$Age_class <- factor(df_mca$Age_class, levels = c('Kid', 'Teenager', 'Regular', 'Veteran'), ordered = TRUE)
+df_mca$BodyWeight_class <- factor(df_mca$BodyWeight_class, levels = c('61', '67', '73', '81', '96', '109', '109+'), ordered = TRUE)
+df_mca$Place<- factor(df_mca$Place, levels = c("DQ","Other","10","9","8","7","6","5","4","3","2","1"), ordered = TRUE)
+df_mca$DeadliftInc1_class<- factor(df_mca$DeadliftInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$DeadliftInc2_class<- factor(df_mca$DeadliftInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$SquatInc1_class<- factor(df_mca$SquatInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$SquatInc2_class<- factor(df_mca$SquatInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$BenchInc1_class<- factor(df_mca$BenchInc1_class, levels = c('Small','Median','Big'), ordered = TRUE)
+df_mca$BenchInc2_class<- factor(df_mca$BenchInc2_class, levels = c('Small','Median','Big'), ordered = TRUE)
+
+
+
+
 #result <- Factoshiny(df_mca)
 
+
 res.MCA <- MCA(df_mca,graph=FALSE)
-plot.MCA(res.MCA, choix='var')
-plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), graph.type="ggplot") + 
-  geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
+
+#variables
+
+colors = palette.colors(ncol(df_mca),palette='Polychrome 36')
+colorsvar = colorsvar=rep(colors, times = c(2,3,2,12,2,2,2,2,2,2,2,2,2,4,7,3,3,3,3,3,3))
+plot.MCA(res.MCA, invisible='ind',label='var', axes=c(1,2), col.var = colorsvar,autoLab = 'yes', cex = .8)#AFEGIR LEGEND
+
+
+
+#contributions
+fviz_contrib(res.MCA, choice = "var", axes = 1,top= 15)
+
+
+plot.MCA(res.MCA, choix='var',axes=c(1,2),repel=TRUE, ggtheme = theme.minimal())
+
+#fviz_mca_var(res.MCA, choice = "var", axes=c(1,2), repel = TRUE, ggtheme = theme_minimal())
+#el de sobre no funciona bé
+
+
+#plot.MCA(res.MCA, choix='ind',label='var')
+#individuals
+plot.MCA(res.MCA, choix='ind',invisble = 'var',label='none', axes = c(1,2), habillage =1, autoLab = 'yes',res=300)#,cex=.6)
+
+fviz_mca_ind(res.MCA, axes= c(1,2), geom.ind = 'point', alpha.ind=.1)
+
+# plot.MCA(res.MCA,invisible= 'ind',selectMod= 'cos2 0.2',label =c('var'), graph.type="ggplot") + 
+#   geom_text_repel() + ggtitle("Mca factor map with cos2 >= 0.2")
 
 #Values 
 summary(res.MCA)
 
 #Description of the axis
 
-#eigenvalues > 1/n_categories
+#eigenvalues
+eigenvalues <- get_eigenvalue(res.MCA)
 
 #measures the degree of association between variable categories and a particular axis
-fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
-             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
-             repel = TRUE, # Avoid text overlapping
-             ggtheme = theme_minimal())
+# fviz_mca_var(res.MCA, alpha.var = "cos2", select.var = list(cos2 = 0.15),
+#              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+#              repel = TRUE, # Avoid text overlapping
+#              ggtheme = theme_minimal())
 
 #visualize the inertia kept by dimensions
 
-fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 45))
+fviz_screeplot(res.MCA, addlabels = TRUE, ylim = c(0, 10))
 
 #quality of representation  
-fviz_cos2(res.MCA, choice = "var", axes = 1:2)
+# fviz_cos2(res.MCA, choice = "var", axes = 1:2)
 ```
 
 -   Multiple Factor Analysis

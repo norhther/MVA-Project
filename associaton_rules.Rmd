@@ -39,7 +39,6 @@ support: confidence: lift: kpi, correlation and independence between elements in
 -   Apriori
 
 ```{r}
-
 df_rules <- df %>%
   mutate(
     Age_class = ifelse(
@@ -63,51 +62,67 @@ df_rules <- df %>%
     # To obtain the Q1 and Q3 of the mean of the two increases
     #summary(data.frame((df$DeadliftInc1 + df$DeadliftInc2)/2))
     DeadliftInc1_class = ifelse(
+      DeadliftInc1 == 0, "zero",ifelse(
       DeadliftInc1 < 7.5, "Small", ifelse(
       DeadliftInc1 < 12.5, "Median", "Big"
       )
-    ),
-    #summary(data.frame((df$SquatInc1 + df$SquatInc2)/2))
+    )),
     DeadliftInc2_class = ifelse(
+      DeadliftInc2 == 0, "zero",ifelse(
       DeadliftInc2 < 7.5, "Small", ifelse(
       DeadliftInc2 < 12.5, "Median", "Big"
       )
-    ),
+    )),
+    #summary(data.frame((df$SquatInc1 + df$SquatInc2)/2))
     SquatInc1_class = ifelse(
+      SquatInc1 == 0, "zero",ifelse(
       SquatInc1 < 5, "Small", ifelse(
       SquatInc1 < 10, "Median", "Big"
       )
-    ),
+    )),
     SquatInc2_class = ifelse(
+      SquatInc2 == 0, "zero",ifelse(
       SquatInc2 < 5, "Small", ifelse(
       SquatInc2 < 10, "Median", "Big"
       )
-    ),
+    )),
     #summary(data.frame(df$BenchInc1 + df$BenchInc2))
     BenchInc1_class = ifelse(
+      BenchInc1 == 0, "zero",ifelse(
       BenchInc1 < 7.5, "Small", ifelse(
       BenchInc1 < 12.5, "Median", "Big"
       )
-    ),
+    )),
     BenchInc2_class = ifelse(
+      BenchInc2 == 0, "zero",ifelse(
       BenchInc2 < 7.5, "Small", ifelse(
       BenchInc2 < 12.5, "Median", "Big"
       )
-    )
+    ))
     ) %>%
   mutate(Age_class = as_factor(Age_class),
          BodyWeight_class = as_factor(BodyWeight_class))
-
-
 df_rules <- df_rules %>%
   mutate(across(ends_with("?"), ~factor(.x, labels = c("Not lifted", "Lifted")))) %>%
-  select(SquatInc1_class, SquatInc2_class, BenchInc1_class, BenchInc2_class, DeadliftInc1_class, DeadliftInc2_class, Age_class, Equipment, BodyWeight_class, Sex, Event, Equipment, Place, Tested, Place) %>%
-  mutate(across(1:13, ~factor(.x)))
-
-
-
+  select(SquatInc1_class, SquatInc2_class, BenchInc1_class, BenchInc2_class, DeadliftInc1_class, DeadliftInc2_class, Age_class, Equipment, BodyWeight_class, Sex, Event, Equipment, Place, Tested, Place, 'LiftedSquat1Kg?', 'LiftedSquat2Kg?', 'LiftedSquat3Kg?', 'LiftedBench1Kg?', 'LiftedBench2Kg?', 'LiftedBench3Kg?', 'LiftedDeadlift1Kg?',    
+'LiftedDeadlift2Kg?', 'LiftedDeadlift3Kg?') %>%
+  mutate(across(1:22, ~factor(.x)))
 df_apriori <- transactions(df_rules)
 
-rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.80) , minlen=2, maxlen=2)
+# Rules regarding the increase zero
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.70) , minlen=2, maxlen=2, appearance = list(default = 'lhs', rhs ='BenchInc1_class=Small'))
+inspect(head(sort(rules_apriori, by = 'lift'),20))
 
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.70) , minlen=2, maxlen=2, appearance = list(default = 'lhs', rhs ='BenchInc2_class=Small'))
+inspect(head(sort(rules_apriori, by = 'lift'),20))
+
+
+# Rules regarding the riskiness of bench
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.70) , minlen=2, maxlen=2, appearance = list(default = 'lhs', rhs ='SquatInc2_class=zero'))
+inspect(head(sort(rules_apriori, by = 'lift'),20))
+
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.70) , minlen=2, maxlen=2, appearance = list(default = 'lhs', rhs ='BenchInc2_class=zero'))
+inspect(head(sort(rules_apriori, by = 'lift'),20))
+
+rules_apriori <- apriori(df_apriori, parameter = list(supp = 0.1, conf = 0.70) , minlen=2, maxlen=2, appearance = list(default = 'lhs', rhs ='DeadliftInc2_class=zero'))
 inspect(head(sort(rules_apriori, by = 'lift'),20))

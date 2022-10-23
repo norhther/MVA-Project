@@ -70,7 +70,13 @@ ggplot(data_long, aes(x = value)) +    # Draw histogram & density
   geom_density(col = "#1b98e0", size = .5) + 
   facet_wrap(~ name, scales = "free")
 
+###
+plot(x=cols_zero_var$Age,y=cols_zero_var$Goodlift)
+plot(x=cols_zero_var$Age,y=cols_zero_var$BodyweightKg)
+plot(x=cols_zero_var$Squat,y=cols_zero_var$Deadlift)
 
+pairs(~Age+Squat+Bench+Deadlift,data=df1)
+pairs(~Age+Squat+SquatInc1,data=df1)
 
 
 univariate_vals <- data_long %>%

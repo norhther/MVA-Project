@@ -22,7 +22,7 @@ library(janitor)
 ```
 
 ```{r, prompt=F}
-df <- read_csv("/home/norhther/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
+df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
 ```
 
 
@@ -48,7 +48,6 @@ df_selected <- df %>% select(Sex, Age, BodyweightKg, WeightTriedSquat1Kg, Weight
               `LiftedSquat2Kg?`, `LiftedBench1Kg?`, `LiftedBench2Kg?`,
               `LiftedDeadlift1Kg?`, `LiftedDeadlift2Kg?`, Place) %>%
   mutate_if(is.character, as_factor) %>%
-  sample_n(50000) %>%
   clean_names()
 
 df_split <- initial_split(df_selected, strata = place)
@@ -79,7 +78,7 @@ tree_spec <- decision_tree(
 
 tree_spec
 
-tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 4)
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 3)
 
 tree_grid
 ```
@@ -106,6 +105,79 @@ collect_metrics(tree_rs)
 
 autoplot(tree_rs) + theme_light()
 
-show_best(tree_rs, "precision")
+show_best(tree_rs, "accuracy")
 
 ```
+
+There are several best combinations depending of which metric we want to use, and also
+within the same metric. We are going to use select_best to select one and finalize the 
+model
+```{r}
+
+final_tree <- finalize_model(tree_spec, select_best(tree_rs, "accuracy"))
+
+final_tree
+
+```
+
+```{r}
+final_fit <- fit(final_tree, place ~ ., df_train)
+final_rs <- last_fit(final_tree, place  ~ ., df_split)
+```
+
+
+
+Show the metrics for the test split
+```{r}
+library(patchwork)
+library("RColorBrewer")
+
+collect_metrics(final_rs)
+
+cm <- final_rs %>%
+  collect_predictions() %>%
+  conf_mat(place, .pred_class)
+
+autoplot(cm, type = "heatmap")
+```
+
+
+
+Check the importance of each predictor in the model
+```{r}
+library(vip)
+
+final_fit %>%
+  vip(geom = "col", aesthetics = list(fill = "midnightblue", alpha = 0.8))
+```
+
+
+We can also try to visualize a tree with some of the most important features
+to see what the model is doing
+```{r}
+library(parttree)
+
+ex_fit <- fit(
+  final_tree,
+  place ~ age + bodyweight_kg,
+  df_train
+)
+
+df_train %>%
+  ggplot(aes(age, bodyweight_kg)) +
+  geom_parttree(data = ex_fit, aes(fill = turbine_capacity), alpha = 0.3) +
+  geom_jitter(alpha = 0.7, width = 1, height = 0.5, aes(color = turbine_capacity)) +
+  scale_colour_viridis_c(aesthetics = c("color", "fill"))
+```
+```{r}
+
+```
+
+
+
+Save the model
+```{r}
+#save(final_rs, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\model_fitted.Rdata")
+```
+
+

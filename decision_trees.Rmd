@@ -1,0 +1,111 @@
+---
+title: "Theming with bslib and thematic"
+output: 
+  html_document:
+    code_folding: show
+    theme:
+      bg: "#202123"
+      fg: "#B8BCC2"
+      primary: "#EA80FC"
+      secondary: "#00DAC6"
+      base_font:
+        google: Prompt
+      heading_font:
+        google: Proza Libre
+---
+
+```{r, prompt=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+
+```
+
+```{r, prompt=F}
+df <- read_csv("/home/norhther/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
+```
+
+
+We can try to perform a Decision Tree to predict the Place of the lifter -> 1, 2, 3 or Other 
+
+```{r}
+
+df %>% 
+  mutate(Place = fct_lump(Place, 3)) %>% 
+  count(Place)
+
+df <- df %>%
+  mutate(Place = fct_lump(Place, 3))
+
+```
+
+Create a train/test split of 75% for training, stratifying by Place
+```{r}
+set.seed(42)
+
+df_selected <- df %>% select(Sex, Age, BodyweightKg, WeightTriedSquat1Kg, WeightTriedSquat2Kg, WeightTriedBench1Kg, WeightTriedSquat1Kg,
+              WeightTriedSquat2Kg, WeightTriedDeadlift1Kg, WeightTriedDeadlift2Kg, `LiftedSquat1Kg?`,
+              `LiftedSquat2Kg?`, `LiftedBench1Kg?`, `LiftedBench2Kg?`,
+              `LiftedDeadlift1Kg?`, `LiftedDeadlift2Kg?`, Place) %>%
+  mutate_if(is.character, as_factor) %>%
+  sample_n(50000) %>%
+  clean_names()
+
+df_split <- initial_split(df_selected, strata = place)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+
+```
+
+
+And a 10 folds for cv, also stratifying by Place
+```{r}
+set.seed(42)
+df_folds <- vfold_cv(df_train, strata = place)
+df_folds
+
+```
+
+
+Model specification: tune cost_complexity, tree_depth and min_n
+Create a grid of parameters
+```{r}
+tree_spec <- decision_tree(
+  cost_complexity = tune(),
+  tree_depth = tune(),
+  min_n = tune()) %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+
+tree_spec
+
+tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 4)
+
+tree_grid
+```
+
+```{r}
+doParallel::registerDoParallel()
+
+set.seed(42)
+tree_rs <- tune_grid(
+  tree_spec,
+  place ~ .,
+  resamples = df_folds,
+  grid = tree_grid,
+  metrics = metric_set(accuracy, precision, recall)
+)
+
+tree_rs
+```
+
+
+
+```{r}
+collect_metrics(tree_rs)
+
+autoplot(tree_rs) + theme_light()
+
+show_best(tree_rs, "precision")
+
+```

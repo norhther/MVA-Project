@@ -22,7 +22,7 @@ library(janitor)
 ```
 
 ```{r, prompt=F}
-df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
+df <- read_csv("/home/norhther/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
 ```
 
 
@@ -71,14 +71,14 @@ Create a grid of parameters
 ```{r}
 tree_spec <- decision_tree(
   cost_complexity = tune(),
-  tree_depth = tune(),
+  tree_depth = 4,
   min_n = tune()) %>%
   set_engine("rpart") %>%
   set_mode("classification")
 
 tree_spec
 
-tree_grid <- grid_regular(cost_complexity(), tree_depth(), min_n(), levels = 3)
+tree_grid <- grid_latin_hypercube(cost_complexity(), min_n(), size = 10)
 
 tree_grid
 ```
@@ -106,7 +106,6 @@ collect_metrics(tree_rs)
 autoplot(tree_rs) + theme_light()
 
 show_best(tree_rs, "accuracy")
-
 ```
 
 There are several best combinations depending of which metric we want to use, and also
@@ -115,7 +114,6 @@ model
 ```{r}
 
 final_tree <- finalize_model(tree_spec, select_best(tree_rs, "accuracy"))
-
 final_tree
 
 ```
@@ -178,6 +176,16 @@ df_train %>%
 Save the model
 ```{r}
 #save(final_rs, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\model_fitted.Rdata")
+```
+
+Plot the tree for interpretation
+```{r}
+library(rpart)
+library(rpart.plot)
+
+
+rpart.plot(final_fit$fit)
+
 ```
 
 

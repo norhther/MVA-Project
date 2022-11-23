@@ -18,11 +18,15 @@ output:
 library(tidyverse)
 library(tidymodels)
 library(janitor)
-
+library(recipes)
+library(modeldata)
+library(themis)
+library(caret)
+library(cvms)
 ```
 
 ```{r, prompt=F}
-df <- read_csv("/home/norhther/Documentos/GitHub/MVA-Project/df_preprocessed.csv")
+df <- read_csv("C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\df_preprocessed.csv")
 ```
 
 
@@ -40,6 +44,8 @@ df <- df %>%
 ```
 
 Create a train/test split of 75% for training, stratifying by Place
+We use a smote algorithm to generate synthetic data to avoid
+overfitting on majority classes.
 ```{r}
 set.seed(42)
 
@@ -54,6 +60,24 @@ df_split <- initial_split(df_selected, strata = place)
 df_train <- training(df_split)
 df_test <- testing(df_split)
 
+up_rec <- recipe(place ~ ., data = df_train) %>%
+  step_dummy(all_factor_predictors()) %>%
+  step_smote(place) %>%
+  prep()
+
+```
+
+
+```{r}
+df_train <- juice(up_rec)
+
+#adjusting smote
+df_train <- df_train %>%
+  mutate(sex_M = ifelse(sex_M < 0.5, 0, 1),
+         across(8:13, ~ ifelse(.x < 0.5, 0, 1), .names = "{.col}"))
+  
+df_train %>%
+  count(place)
 ```
 
 
@@ -62,7 +86,6 @@ And a 10 folds for cv, also stratifying by Place
 set.seed(42)
 df_folds <- vfold_cv(df_train, strata = place)
 df_folds
-
 ```
 
 
@@ -71,17 +94,19 @@ Create a grid of parameters
 ```{r}
 tree_spec <- decision_tree(
   cost_complexity = tune(),
-  tree_depth = 4,
+  tree_depth = tune(),
   min_n = tune()) %>%
   set_engine("rpart") %>%
   set_mode("classification")
 
 tree_spec
 
-tree_grid <- grid_latin_hypercube(cost_complexity(), min_n(), size = 10)
+tree_grid <- grid_latin_hypercube(cost_complexity(), min_n(),tree_depth(), size = 50)
 
 tree_grid
 ```
+
+
 
 ```{r}
 doParallel::registerDoParallel()
@@ -92,7 +117,7 @@ tree_rs <- tune_grid(
   place ~ .,
   resamples = df_folds,
   grid = tree_grid,
-  metrics = metric_set(accuracy, precision, recall)
+  metrics = metric_set(accuracy, yardstick::precision, yardstick::recall)
 )
 
 tree_rs
@@ -103,9 +128,12 @@ tree_rs
 ```{r}
 collect_metrics(tree_rs)
 
+# save(tree_rs, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\tree_rs.Rdata")
+
 autoplot(tree_rs) + theme_light()
 
 show_best(tree_rs, "accuracy")
+
 ```
 
 There are several best combinations depending of which metric we want to use, and also
@@ -120,23 +148,45 @@ final_tree
 
 ```{r}
 final_fit <- fit(final_tree, place ~ ., df_train)
-final_rs <- last_fit(final_tree, place  ~ ., df_split)
+
+#final_rs <- last_fit(final_tree, place  ~ ., df_split)
 ```
 
+```{r}
+train_preds <- predict(final_fit, 
+        df_train)
+cm <- confusionMatrix(train_preds$.pred_class, df_train$place)
+cm
+
+plot_confusion_matrix(as_tibble(cm$table),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = F,
+                      add_col_percentages = F,
+                      palette = "Reds")
+```
 
 
 Show the metrics for the test split
 ```{r}
-library(patchwork)
-library("RColorBrewer")
 
-collect_metrics(final_rs)
+df_test2 <- bake(up_rec, df_test)
 
-cm <- final_rs %>%
-  collect_predictions() %>%
-  conf_mat(place, .pred_class)
+test_preds <- predict(final_fit, 
+        df_test2)
 
-autoplot(cm, type = "heatmap")
+cm <- confusionMatrix(test_preds$.pred_class, df_test2$place)
+cm
+
+plot_confusion_matrix(as_tibble(cm$table),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = F,
+                      add_col_percentages = F,
+                      palette = "Reds")
+
 ```
 
 
@@ -150,32 +200,9 @@ final_fit %>%
 ```
 
 
-We can also try to visualize a tree with some of the most important features
-to see what the model is doing
-```{r}
-library(parttree)
-
-ex_fit <- fit(
-  final_tree,
-  place ~ age + bodyweight_kg,
-  df_train
-)
-
-df_train %>%
-  ggplot(aes(age, bodyweight_kg)) +
-  geom_parttree(data = ex_fit, aes(fill = turbine_capacity), alpha = 0.3) +
-  geom_jitter(alpha = 0.7, width = 1, height = 0.5, aes(color = turbine_capacity)) +
-  scale_colour_viridis_c(aesthetics = c("color", "fill"))
-```
-```{r}
-
-```
-
-
-
 Save the model
 ```{r}
-#save(final_rs, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\model_fitted.Rdata")
+save(final_fit, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\model_fitted.Rdata")
 ```
 
 Plot the tree for interpretation

@@ -14,7 +14,7 @@ library(lubridate)
 library(dendextend)
 
 # Load data
-setwd("/home/martin/personal/Master/MVA/project/MVA-Project")
+# setwd("/home/martin/personal/Master/MVA/project/MVA-Project")
 df <- read_csv("df_preprocessed.csv")
 
 # Transform to factors
@@ -31,6 +31,9 @@ df$Federation <- factor(df$Federation)
 df$MeetCountry <- fct_other(df$MeetCountry,keep=top_countries)
 df$MeetName <- factor(df$MeetName)
 df$Year <- year(df$Date)
+
+# Rename vars with ? because it causes problems
+names(df) <- gsub("(.*)\\?", "\\1", names(df))
 
 df <- df %>% mutate('LiftedBench1Kg' = as_factor(df$'LiftedBench1Kg'),
                     'LiftedBench2Kg' = as_factor(df$'LiftedBench2Kg'),
@@ -73,18 +76,21 @@ df_1ym = df_1y
 #df_1ym = df_1y[df_1y$Sex == "M",]
 
 
-# Sample only 10% of values
+# Sample only 25% of values
 set.seed(12345)
-getnrow = as.integer(nrow(df_1ym)*0.1)
-df_short <- df_1ym[sample(1:nrow(df_1ym), getnrow), ] 
+getnrow = as.integer(nrow(df_1ym)*0.25)
+# Balance Male vs Female
+sex_prop <- sum(df_1ym$Sex == "F")/sum(df_1ym$Sex == "M")
+prob <- ifelse(df_1ym$Sex == "M", max(1.0, sex_prop), max(1.0, 1.0/sex_prop))
+df_short <- df_1ym[sample(1:nrow(df_1ym), getnrow, prob=prob), ] 
 
 names(df_short)
 nrow(df_short)
 summary(df_short)
 
-dfc1 <- df_short[,c(5,6, 2,20, 7:15)] # Raw results
+# dfc1 <- df_short[,c(5,6, 2,20, 7:15)] # Raw results
 dfc1 <- df_short[,c(5,6, 2,20, 25:33,34:42)] # Absolute value
-dfc1 <- df_short[,c(5,6, 2,20, 43:51,34:42)] # Increases
+# dfc1 <- df_short[,c(5,6, 2,20, 43:51,34:42)] # Increases
 
 summary(dfc1)
 
@@ -94,9 +100,9 @@ gower.dist1 <- daisy(dfc1, metric = c("gower"))
 # Cluster
 m="ward.D"
 aggl.clust1 <- hclust(gower.dist1, method = m)
-plot(aggl.clust1,
+plot(aggl.clust1, labels=F,
      main = paste("Agglomerative, ",m," linkages",sep=""))
-rect.hclust(aggl.clust1, k=5, border=6)
+rect.hclust(aggl.clust1, k=4, border=6)
 
 gdist = gower.dist1
 for (m in c("ward.D", "ward.D2", "single")){
@@ -120,10 +126,10 @@ particiones
 # For dfc3:     1          2          6          4          3
 
 # Cutting the tree
-df_short$c1 = as.factor(cutree(tree=aggl.clust1, k=5))
+df_short$cluster = as.factor(cutree(tree=aggl.clust1, k=4))
 gather_short <- tidyr::gather(data=df_short,
                                 key="Method",value="Cluster",
-                                c1)
+                                cluster)
 
 p <- ggplot(gather_short) + aes(x=factor(Cluster),fill=Place) +
     geom_bar() +
@@ -134,7 +140,9 @@ p
 df_foo <- dfc1
 df_foo$Place <- df_short$Place
 
-df_foo$c1 <- df_short$c1
+df_foo$cluster <- df_short$cluster
 
 ncol(df_foo)
 catdes(df_foo,24)
+
+saveRDS(as.data.frame(df_short), file = "hcluster/hcluster_2019-p25-tr-k4.rds")

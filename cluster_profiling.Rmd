@@ -11,55 +11,50 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(ggplot2)
+library(tidyverse)
 library(FactoMineR)
 ```
 
 
 ```{r}
-df <- readRDS("hcluster.rds")
-
-# Rename vars with ? because it causes problems
-names(df) <- gsub("(.*)\\?", "\\1", names(df))
+df <- readRDS("hcluster/hcluster_2019-p25-tr-k4.rds")
 
 dim(df)
 names(df)
 
-cluster_vars <- c(5, 6, 2, 20, 43:51, 34:42)
+# cluster_vars <- c(5, 6, 2, 20, 43:51, 34:42)
+cluster_vars <- c(5, 6, 2, 20, 25:33, 34:42)
 names(df[,cluster_vars])
 ```
 
 
 ## Graphical profiling
 
-### Numerical
-
 ```{r}
 for (v in c("Age", "BodyweightKg")) {
-  pl <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
-    geom_boxplot() +
-    geom_jitter(color="black", size=0.4, alpha=0.7) +
-    geom_hline(yintercept=mean(df[,v]), linetype="dashed", color = "red", size=1)
-  print(pl)
+  p <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
+    geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
+    # geom_jitter(color="black", width=0.2, size=0.4, alpha=0.2) +
+    geom_hline(yintercept=mean(df[,v]), linetype="dashed", color = "red", size=1) +
+    theme_minimal()
+  print(p)
 }
 ```
-
 
 
 ```{r}
 for (cat in c("Squat", "Bench", "Deadlift")) {
   for (att in c("", "Inc1", "Inc2")) {
     v <- paste0(cat, att)
-    pl <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
-      geom_boxplot() +
-      geom_jitter(color="black", size=0.4, alpha=0.7) +
+    p <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
+      geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
+      # geom_jitter(color="black", width=0.2, size=0.4, alpha=0.2) +
       geom_hline(yintercept=mean(df[,v]), linetype="dashed", color = "red", size=1)
-    print(pl)
+    print(p)
   }
 }
 ```
 
-
-### Categorical
 
 ```{r}
 # Total counts
@@ -69,122 +64,142 @@ ggplot(df, aes(x=cluster, y=stat(count))) +
 
 
 ```{r}
-for (v in c("Sex", "Country")) {
-  pl <- ggplot(df, aes_string(x="cluster", fill=v)) +
+for (v in c("Sex", "Country", "Place")) {
+  p <- ggplot(df, aes_string(x="cluster", fill=v)) +
     geom_bar(position="fill") +
     labs(y = "Proportion")
-  print(pl)
+  print(p)
 }
 ```
 
-```{r}
+```{r, fig.height=8, fig.width=8}
 for (cat in c("Squat", "Bench", "Deadlift")) {
-  for (att in c("1", "2", "3")) {
-    v <- paste0("Lifted", cat, att, "Kg")
-    pl <- ggplot(df, aes_string(x="cluster", fill=v)) +
-      geom_bar(position="fill") +
-      labs(y = "Proportion")
-    print(pl)
-  }
+  ncat <- paste0("WeightTried", cat)
+  dfm <- pivot_longer(
+    df,
+    cols=c(paste0(ncat, "1Kg"), paste0(ncat, "2Kg"), paste0(ncat, "3Kg")),
+    names_to=ncat
+  )
+  p <- ggplot(dfm, aes_string(x=ncat, y="value")) +
+    geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    facet_wrap(~cluster)
+  print(p)
+
+  ncat <- paste0("Lifted", cat)
+  dfm <- pivot_longer(
+    df,
+    cols=c(paste0(ncat, "1Kg"), paste0(ncat, "2Kg"), paste0(ncat, "3Kg")),
+    names_to=ncat
+  )
+  p <- ggplot(dfm, aes_string(x=ncat, fill="value")) +
+    geom_bar(position="fill") +
+    labs(y = "Proportion") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    facet_wrap(~cluster)
+  print(p)
 }
 ```
+
 
 ## Statistical profiling
 
 ```{r}
-dfcl <- df[,c(cluster_vars, 55)]
+options(digits=7)
+dfcl <- df[,c(cluster_vars, 17, 55)]
 names(dfcl)
-catdes(dfcl, 23, proba = 0.01)
+catdes(dfcl, 24, proba = 0.01)
 ```
 
 ## Selected relevant variables
 
+* Qualitative: percentage P(Variable | Cluster) vs P(Variable).
+* Quantitative: mean in category vs global mean.
+
 * Cluster 1
-	* Qualitative
-		* More male: 85.5% of this cluster is male (global 63.0%)
-        * More successful lift attempts
-            * Squat 1, 2
+    * Qualitative
+        * Mostly male (99.20 vs 52.20)
         * More failed attempts
-            * Squat 3
-            * Deadlift 1, 2, 3 
-            * Bench 1, 2
-		* Less people from England
-	* Quantitative
-		* More first tried weight in deadlift, squat and bench
-		* A little more body weight (84 vs 81)
-		* Younger (27 vs 29)
+            * Squat 1 (15.91 vs 11.80), 2 (21.98 vs 17.11), 3 (46.10 34.90)
+            * Bench 1 (12.19 vs 7.68), 2 (24.92 vs 19.27)
+            * Deadlift 1 (7.01 vs 4.21), 2 (15.75 vs 11.25), 3 (54.08 37.56)
+        * Worse Place
+            * More Other (38.91 vs 32.67) and DQ (3.42 vs 2.42)
+            * Less 1 (31.39 vs 37.20) and 2 (15.79 vs 17.39) 
+        * Country
+            * More from Germany (4.50 vs 3.56) and Other (25.72 vs 22.24)
+            * Less from England (6.85 vs 8.40) and USA (46.70 48.71)
+    * Quantitative
+        * Younger (27.90 vs 28.94)
+        * Heavier (88.19 vs 79.00)
+        * More weight tried
+            * Squat 1 (183.18 vs 143.42), 2 (193.02 vs 151.83), 3 (200.11 vs 158.10)
+            * Bench 1 (122.03 vs 90.50), 2 (128.93 vs 96.34), 3 (133.21 vs 100.17)
+            * Deadlift 1 (205.79 vs 163.87), 2 (218.25 vs 174.55), 3 (227.08 vs 182.36)
 * Cluster 2
-	* Qualitative
-		* More female: 99.7% of this cluster is female (global 37.0%) 64.4 female are on this cluster.
-		* More successful lift attempts
-			* Squat 1, 2
-			* Bench 1
-			* Deadlift 1, 2, 3
-        * More England less Germany
-	* Quantitative
-		* Older (30.0 vs 28.8)
-        * Less body weight (68.4 vs 80.7)
-        * Less starting weight
-            * Squat
-            * Bench
-            * Deadlift (58.2 vs 96.8)
-        * Less weight increments
-            * Squat 1, 2
-            * Bench 1, 2
-            * Deadlift 1, 2
+    * Qualitative
+        * Mostly male (100.00 vs 52.20)
+        * More successful attempts
+            * Squat 1 (99.53 vs 88.20), 2 (99.74 vs 82.89), 3 (97.27 vs 65.10)
+            * Bench 1 (99.90 vs 92.32), 2 (99.95 vs 80.73), 3 (58.04 47.45)
+            * Deadlift 1 (99.89 vs 95.79), 2 (99.84 vs 88.75), 3 (97.74 vs 62.44)
+        * Better Place
+            * More 1 (42.06 vs 37.20)
+            * Less Other (29.76 vs 32.67) and DQ (0.05 vs 2.42)
+        * Country
+            * More from Germany (4.84 vs 3.56)
+            * Less from Ukraine (0.00 vs 0.28) and Other (19.30 vs 22.24)
+    * Quantitative
+        * Heavier (87.81 vs 79.00)
+        * More weight tried
+            * Squat 1 (169.50 vs 143.42), 2 (180.12 vs 151.83), 3 (188.50 vs 158.10)
+            * Bench 1 (114.30 vs 90.50), 2 (121.72 vs 96.34), 3 (127.21 vs 100.17)
+            * Deadlift 1 (195.11 vs 163.87), 2 (208.00 vs 174.55), 3 (217.98 vs 182.36)
 * Cluster 3
-	* Qualitative
-        * More successful attempts
-            * Squat 1
-            * Deadlift 1
+    * Qualitative
+        * Mostly female (98.74 vs 47.80)
         * More failed attempts
-            * Squat 2, 3
-            * Bench 2, 3
-            * Deadlift 3
-	* Quantitative
-        * More increment in Squat 1
-        * Less increment in Squat 2
+            * Squat 1 (16.29 vs 11.80), 2 (24.90 vs 17.11), 3 (48.61 vs 34.90)
+            * Bench 1 (8.70 vs 7.68), 2 (28.00 vs 19.27), 3 (58.32 vs 52.55)
+            * Deadlift 2 (15.03 vs 11.25), 3 (47.71 vs 37.56)
+        * Worse Place
+            * More DQ (3.16 vs 2.42)
+            * Less Other (30.97 vs 32.67)
+        * Country
+            * More from USA (50.79 vs 48.71)
+            * Less from Germany (1.92 vs 3.56)
+    * Quantitative
+        * Older (29.90 vs 28.94)
+        * Lighter (68.42 vs 79.00)
+        * Less weight tried
+            * Squat 1 (105.49 vs 143.42), 2 (111.97 vs 151.83), 3 (116.69 vs 158.10)
+            * Bench 1 (59.07 vs  90.50), 2 (63.54 vs  96.34), 3 (66.29 vs 100.17)
+            * Deadlift 1 (122.22 vs 163.87), 2 (130.76 vs 174.55), 3 (136.88 vs 182.36)
 * Cluster 4
-	* Qualitative
-        * More male: 100.0% of this cluster is male (global 63.0%)
+    * Qualitative
+        * Mostly female (99.70 vs 47.80)
         * More successful attempts
-            * Squat 1, 2, 3
-            * Bench 1, 2, 3
-            * Deadlift 1, 2, 3
-        * More Germany less USA
-	* Quantitative
-        * More body weight (88.9 vs 80.7)
-        * More starting weight
-            * Squat (177.2 vs 151.5)
-            * Bench (118.9 vs 96.8)
-            * Deadlift (203.2 vs 172.5)
-        * More weight increments
-            * Squat 1, 2
-            * Bench 1, 2
-            * Deadlift 1, 2
-* Cluster 5
-	* Qualitative
-        * More successful attempts
-            * Bench 1
-        * More failed attempts
-            * Squat 1, 2 (99.2 vs 11.9), (24.4, 17.3)
-            * Bench 2, 3
-            * Deadlift 3
-        * More USA (55.3 vs 49.1)
-	* Quantitative
-        * Older (30.0 vs 28.8)
-        * Less starting weight
-            * Deadlift (164.4 vs 172.5)
-        * Less weight increment
-            * Squat 1
-        * More weight increment
-            * Squat 2
+            * Squat 1 (100.00 vs 88.20), 2 (99.94 vs 82.89), 3 (100.00 vs 65.10)
+            * Bench 1 (99.94 vs 92.32), 2 (100.00 vs 80.73), 3 (55.02 vs 47.45)
+            * Deadlift 1 (100.00 vs 95.79), 2 (100.00 vs 88.75), 3 (99.70 vs 62.44)
+        * Better Place
+            * More 1 (48.29 vs 37.20)
+            * Less Other (22.16 vs 32.67) and DQ (0.06 vs 2.42)
+        * Country
+            * More England (11.23 vs 8.40)
+            * Less Other (17.43 vs 22.24)
+    * Quantitative
+        * Older (30.15 vs 28.94)
+        * Lighter (71.12 vs 79.00)
+        * Less weight tried
+            * Squat 1 (101.39 vs 143.42), 2 (108.44 vs 151.83), 3 (114.16 vs 158.10)
+            * Bench 1 (57.41 vs  90.50), 2 (62.11 vs  96.34), 3 (65.70 vs 100.17)
+            * Deadlift 1 (119.89 vs 163.87), 2 (128.79 vs 174.55), 3 (135.86 vs 182.36)
 
 
 ## Cluster templates
 
-* Cluster 1: Younger mostly male with a little more bodyweight, trying more weight in first attempts and failing on bench and deadlift but succeeding at squat.
-* Cluster 2: Older female with less body weight, trying less starting weights and increments and mostly succeeding. More from England and less from Germany.
-* Cluster 3: 
-* Cluster 4: Male with more bodyweight, more starting weight and increments with successfull attempts. More Germany less USA.
-* Cluster 5:
+* Cluster 1 (Male average performances): Heavier younger male that tried lifting more weight than average and failed more in all categories (squat, bench and deadlift), finishing in worse places (lower than 3rd and less 1st than average). Significantly more from Germany and less from England.
+* Cluster 2 (Male top performances): Heavier (but less than cluster 1) male that tried lifting more weight than average (but less than cluster 1) and succeeded more in all categories (squat, bench and deadlift),  finishing in better places (more 1st and less lower than 3rd). Significantly more from Germany and no one from Ukraine.
+* Cluster 3 (Female average performances): Lighter older female that tried lifting less weight and failed more in all categories (squat, bench and deadlift), finishing more disqualified but less in places lower than 3rd. Significantly more from USA and less from Germany.
+* Cluster 4 (Female top performances): Lighter (but heavier than cluster 3) older (more than cluster 3) female that tried lifting less weight (less than cluster 3) and succeeded more in all categories (squat, bench and deadlift), finishing more 1st and less in places lower than 3rd. Significantly more from England and less from Other countries.

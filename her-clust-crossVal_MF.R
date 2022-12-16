@@ -96,7 +96,7 @@ m="ward.D"
 aggl.clust1 <- hclust(gower.dist1, method = m)
 plot(aggl.clust1,
      main = paste("Agglomerative, ",m," linkages",sep=""))
-rect.hclust(aggl.clust1, k=5, border=6)
+rect.hclust(aggl.clust1, k=3, border=6)
 
 gdist = gower.dist1
 for (m in c("ward.D", "ward.D2", "single")){
@@ -106,11 +106,12 @@ for (m in c("ward.D", "ward.D2", "single")){
 }
 
 # Find k
-indices <- c("frey", "mcclain", "cindex", "silhouette", "dunn")
+#indices <- c("frey", "mcclain", "cindex", "silhouette", "dunn")
+indices <- c("silhouette", "dunn")
 particiones <- vector()
 for(i in 1:length(indices)){
   print(indices[i])
-  sel_k<-NbClust(diss=gower.dist1,distance=NULL,min.nc=2,max.nc=6,method="ward.D",index=indices[i])
+  sel_k<-NbClust(diss=gower.dist1,distance=NULL,min.nc=3,max.nc=10,method="ward.D",index=indices[i])
   particiones[i]<-max(sel_k$Best.partition)
 }
 names(particiones) <- indices
@@ -120,13 +121,13 @@ particiones
 # For dfc3:     1          2          6          4          3
 
 # Cutting the tree
-df_short$c1 = as.factor(cutree(tree=aggl.clust1, k=5))
+df_short$c1 = as.factor(cutree(tree=aggl.clust1, k=3))
 gather_short <- tidyr::gather(data=df_short,
                                 key="Method",value="Cluster",
                                 c1)
 
 p <- ggplot(gather_short) + aes(x=factor(Cluster),fill=Place) +
-    geom_bar() +
+    geom_bar(position="fill") +
     facet_grid(~Method) 
 p
 

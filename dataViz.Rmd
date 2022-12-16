@@ -389,19 +389,23 @@ groups <- list(
   "Lifter attributes"=list("n", c("Sex")),
   "Lifter condition"=list("s", c("Age", "BodyweightKg")),
   #"Lifter equipment"=list("n", c("Equipment")),
-  "Lift tried"=list("s", c("Squat", "SquatInc1", "SquatInc2",
-                           "Bench", "BenchInc1", "BenchInc2",
-                           "Deadlift", "DeadliftInc1", "DeadliftInc2")),
-  "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
-                             "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
-                             "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
+  
+  # All attempts
+  # "Lift tried"=list("s", c("Squat", "SquatInc1", "SquatInc2",
+  #                          "Bench", "BenchInc1", "BenchInc2",
+  #                          "Deadlift", "DeadliftInc1", "DeadliftInc2")),
+  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
+  #                            "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
+  #                            "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
+  
   # Only using attempts 1 and 2
-  # "Lift tried"=list("s", c("Squat", "SquatInc1",
-  #                          "Bench", "BenchInc1",
-  #                          "Deadlift", "DeadliftInc1")),
-  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?",
-  #                            "LiftedBench1Kg?", "LiftedBench2Kg?",
-  #                            "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?")),
+  "Lift tried"=list("s", c("Squat", "SquatInc1",
+                           "Bench", "BenchInc1",
+                           "Deadlift", "DeadliftInc1")),
+  "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?",
+                             "LiftedBench1Kg?", "LiftedBench2Kg?",
+                             "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?")),
+  
   # Only using attempt 1
   # "Lift tried"=list("s", c("Squat", "Bench", "Deadlift")),
   # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?")),
@@ -420,7 +424,7 @@ res.mfa <- MFA(df_mfa,
                group = group_nums,
                type = group_types,
                name.group = group_names,
-               num.group.sup = c(1),
+               num.group.sup = c(5),
                graph = FALSE)
 
 head(get_eigenvalue(res.mfa), 20)
@@ -491,7 +495,9 @@ fviz_mfa_var(res.mfa, "quali.var", axes = axes,
 ```
 
 ```{r}
+fviz_mfa_axes(res.mfa, axes = c(1, 2), repel=T)
 fviz_mfa_axes(res.mfa, axes = c(2, 3), repel=T)
+fviz_mfa_axes(res.mfa, axes = c(3, 4), repel=T)
 ```
 
 ```{r}

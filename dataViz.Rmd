@@ -67,7 +67,6 @@ data_long <- cols_zero_var %>%                          # Apply pivot_longer fun
 
 ggplot(data_long, aes(x = value)) +    # Draw histogram & density
   geom_histogram(aes(y = ..density..)) + 
-  geom_density(col = "#1b98e0", size = .5) + 
   facet_wrap(~ name, scales = "free")
 
 ###
@@ -95,15 +94,41 @@ univariate_vals_long <- univariate_vals %>%
   pivot_longer(!name, names_to = "metric") %>% 
   as.data.frame()
 
-univariate_vals_long %>% 
+univariate_vals_long %>%
+  filter(metric %in% c("kurtosis", "skewness")) %>%
   ggplot(aes(x = name, y = value)) + geom_col() + 
   facet_wrap(~metric, scales = "free") + coord_flip() 
 
+univariate_vals_long %>%
+    filter(!metric %in% c("kurtosis", "skewness"))
 
 
 ad.test(cols_zero_var$Goodlift)
 ```
 
+```{r}
+df %>%
+  select(Age, BodyweightKg, Goodlift, Squat, Bench, Deadlift, Sex) %>%
+  pivot_longer(!Sex) %>%
+  ggplot(aes(x = value, fill = Sex)) + geom_histogram(alpha = 4/10, position = "identity") + facet_wrap(~name, scales = "free")
+
+summary(cols_zero_var)
+
+
+df %>%
+  select(Age, BodyweightKg, Goodlift, Squat, Bench, Deadlift, Sex) %>%
+  filter(Sex == "F") %>%
+  
+ad.test(
+  df %>%
+  select(Age, BodyweightKg, Goodlift, Squat, Bench, Deadlift, Sex) %>%
+  filter(Sex == "F") %>%
+  select(Deadlift) %>%
+  pull()
+  )
+
+
+```
 
 
 -   PCA

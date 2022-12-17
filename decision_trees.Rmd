@@ -101,7 +101,8 @@ tree_spec <- decision_tree(
 
 tree_spec
 
-tree_grid <- grid_latin_hypercube(cost_complexity(), min_n(),tree_depth(), size = 50)
+tree_grid <- grid_latin_hypercube(
+  cost_complexity(), min_n(), tree_depth(), size = 50)
 
 tree_grid
 ```
@@ -202,14 +203,13 @@ final_fit %>%
 
 Save the model
 ```{r}
-save(final_fit, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\model_fitted.Rdata")
+save(final_fit, file = "C:\\Users\\omarl\\OneDrive\\Escritorio\\MVA-Project\\small_model_fitted.Rdata")
 ```
 
 Plot the tree for interpretation
 ```{r}
 library(rpart)
 library(rpart.plot)
-
 
 rpart.plot(final_fit$fit)
 

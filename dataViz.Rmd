@@ -413,27 +413,38 @@ groups <- list(
   # "Lifter attributes"=list("n", c("Sex", "Country")),
   "Lifter attributes"=list("n", c("Sex")),
   "Lifter condition"=list("s", c("Age", "BodyweightKg")),
-  #"Lifter equipment"=list("n", c("Equipment")),
+  # "Lifter equipment"=list("n", c("Equipment")),
   
+  # All attempts absolute
+  # "Lift tried"=list("s",
+  #   c("WeightTriedSquat1Kg", "WeightTriedSquat2Kg", "WeightTriedSquat3Kg",
+  #   "WeightTriedBench1Kg", "WeightTriedBench2Kg", "WeightTriedBench3Kg",
+  #   "WeightTriedDeadlift1Kg", "WeightTriedDeadlift2Kg", "WeightTriedDeadlift3Kg")),
+  # "Lift quality"=list("n",
+  #   c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
+  #   "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
+  #   "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
+
   # All attempts
-  # "Lift tried"=list("s", c("Squat", "SquatInc1", "SquatInc2",
-  #                          "Bench", "BenchInc1", "BenchInc2",
-  #                          "Deadlift", "DeadliftInc1", "DeadliftInc2")),
-  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
-  #                            "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
-  #                            "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
+  "Lift tried"=list("s", c("Squat", "SquatInc1", "SquatInc2",
+                           "Bench", "BenchInc1", "BenchInc2",
+                           "Deadlift", "DeadliftInc1", "DeadliftInc2")),
+  "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?", "LiftedSquat3Kg?",
+                             "LiftedBench1Kg?", "LiftedBench2Kg?", "LiftedBench3Kg?",
+                             "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?", "LiftedDeadlift3Kg?")),
   
   # Only using attempts 1 and 2
-  "Lift tried"=list("s", c("Squat", "SquatInc1",
-                           "Bench", "BenchInc1",
-                           "Deadlift", "DeadliftInc1")),
-  "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?",
-                             "LiftedBench1Kg?", "LiftedBench2Kg?",
-                             "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?")),
+  # "Lift tried"=list("s", c("Squat", "SquatInc1",
+  #                          "Bench", "BenchInc1",
+  #                          "Deadlift", "DeadliftInc1")),
+  # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedSquat2Kg?",
+  #                            "LiftedBench1Kg?", "LiftedBench2Kg?",
+  #                            "LiftedDeadlift1Kg?", "LiftedDeadlift2Kg?")),
   
   # Only using attempt 1
   # "Lift tried"=list("s", c("Squat", "Bench", "Deadlift")),
   # "Lift quality"=list("n", c("LiftedSquat1Kg?", "LiftedBench1Kg?", "LiftedDeadlift1Kg?")),
+
   # "Competition"=list("n", c("Federation", "Tested")),
   # "Date"=list("s", c("Date")),
   "Place"=list("n", c("Place")))
@@ -458,10 +469,10 @@ fviz_screeplot(res.mfa)
 ```
 
 ```{r}
-fviz_contrib(res.mfa, "group", axes = 1)
-fviz_contrib(res.mfa, "group", axes = 2)
-fviz_contrib(res.mfa, "group", axes = 3)
-fviz_contrib(res.mfa, "group", axes = 4)
+for (i in 1:4) {
+  p <- fviz_contrib(res.mfa, "group", axes = i)
+  print(p)
+}
 ```
 
 
@@ -473,86 +484,74 @@ grad_col <- c("#00AFBB", "#E7B800", "#FC4E07")
 ```{r}
 #dimdesc(res.mfa, axes = 1:2)
 
-fviz_mfa_var(
-  res.mfa, choice = "group", axes = c(1, 2),
-  col.var = "contrib", gradient.cols = grad_col)
-fviz_mfa_var(
-  res.mfa, choice = "group", axes = c(2, 3),
-  col.var = "contrib", gradient.cols = grad_col)
-fviz_mfa_var(
-  res.mfa, choice = "group", axes = c(3, 4),
-  col.var = "contrib", gradient.cols = grad_col)
+for(axes in list(c(1,2), c(2, 3), c(3, 4))) {
+  p <- fviz_mfa_var(
+    res.mfa, choice = "group", axes = axes,
+    col.var = "contrib", gradient.cols = grad_col)
+  print(p)
+}
 ```
 
 ```{r}
-fviz_contrib(res.mfa, choice = "quanti.var", axes = 1, top = 10)
-fviz_contrib(res.mfa, choice = "quali.var", axes = 1, top = 10)
-fviz_contrib(res.mfa, choice = "quanti.var", axes = 2, top = 10)
-fviz_contrib(res.mfa, choice = "quali.var", axes = 2, top = 10)
-fviz_contrib(res.mfa, choice = "quanti.var", axes = 3, top = 10)
-fviz_contrib(res.mfa, choice = "quali.var", axes = 3, top = 10)
-fviz_contrib(res.mfa, choice = "quanti.var", axes = 4, top = 10)
-fviz_contrib(res.mfa, choice = "quali.var", axes = 4, top = 10)
+for (i in 1:4) {
+  p <- fviz_contrib(res.mfa, choice = "quanti.var", axes = i, top = 10)
+  print(p)
+  p <- fviz_contrib(res.mfa, choice = "quali.var", axes = i, top = 10)
+  print(p)
+}
 ```
 
 ```{r}
-axes <- c(1, 2)
-fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
-fviz_mfa_var(res.mfa, "quali.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
-axes <- c(2, 3)
-fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
-fviz_mfa_var(res.mfa, "quali.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
-axes <- c(3, 4)
-fviz_mfa_var(res.mfa, "quanti.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
-fviz_mfa_var(res.mfa, "quali.var", axes = axes,
-             select.var = list(cos2 = 20),
-             col.var = "contrib", gradient.cols = grad_col, repel = TRUE)
+for(axes in list(c(1, 2), c(2, 3), c(3, 4))) {
+  p <- fviz_mfa_var(
+    res.mfa, "quanti.var", axes = axes,
+    select.var = list(cos2 = 20),
+    col.var = "contrib", gradient.cols = grad_col, repel = TRUE
+  )
+  print(p)
+  p <- fviz_mfa_var(
+    res.mfa, "quali.var", axes = axes,
+    select.var = list(cos2 = 20),
+    col.var = "contrib", gradient.cols = grad_col, repel = TRUE
+  )
+  print(p)
+}
 ```
 
 ```{r}
-fviz_mfa_axes(res.mfa, axes = c(1, 2), repel=T)
-fviz_mfa_axes(res.mfa, axes = c(2, 3), repel=T)
-fviz_mfa_axes(res.mfa, axes = c(3, 4), repel=T)
+for(axes in list(c(1,2), c(2, 3), c(3, 4))) {
+  p <- fviz_mfa_axes(res.mfa, axes = axes, repel=T)
+  print(p)
+}
 ```
 
 ```{r}
 fviz_mfa_ind(
-  res.mfa,
-  axes = c(1, 2),
-  habillage = "Place",
-  addEllipses = TRUE,
-  geom = c("point"),
-  col.ind = "black",
-  alpha.ind = 0.3,
-  repel = T)
-fviz_mfa_ind(
-  res.mfa,
-  axes = c(2, 3),
-  habillage = "Place",
-  addEllipses = TRUE,
-  geom = c("point"),
-  col.ind = "black",
-  alpha.ind = 0.3,
-  repel = T)
-fviz_mfa_ind(
-  res.mfa,
-  axes = c(2, 4),
-  habillage = "Place",
-  addEllipses = TRUE,
-  geom = c("point"),
-  col.ind = "black",
-  alpha.ind = 0.3,
-  repel = T)
+    res.mfa,
+    axes = c(1, 2),
+    habillage = "Place",
+    addEllipses = T,
+    geom = c("point"),
+    col.ind = "black",
+    alpha.ind = 0.3,
+    repel = T)
+# for(axes in list(c(1,2), c(2, 3), c(3, 4))) {
+#   p <- fviz_mfa_ind(
+#     res.mfa,
+#     axes = axes,
+#     habillage = "Place",
+#     addEllipses = TRUE,
+#     geom = c("point"),
+#     col.ind = "black",
+#     alpha.ind = 0.3,
+#     repel = T)
+#   print(p)
+# }
+```
+
+```{r}
+# Check correlation between Dim 2 and Place
+boxplot(res.mfa$ind$coord[,2]~df_mfa$Place, main = "MFA Dim 1 vs Place", xlab = "Place", ylab = "Dim 1")
 ```
 
 
@@ -565,7 +564,7 @@ summary(df_mfa[rownames(res.mfa$ind$coord)[cond],])
 
 
 ```{r}
-ds <- c(3, 2)
+ds <- c(1, 2)
 
 fviz_mfa_ind(
   res.mfa,
@@ -600,43 +599,7 @@ fviz_mfa_ind(
 ```
 
 ```{r}
-ds <- c(3, 2)
-
-fviz_mfa_ind(
-  res.mfa,
-  axes = ds,
-  habillage = "LiftedSquat1Kg?",
-  addEllipses = T,
-  geom = c("point"),
-  col.ind = "black",
-  pointsize = 1,
-  alpha.ind = 0.3,
-  repel = T)
-fviz_mfa_ind(
-  res.mfa,
-  axes = ds,
-  habillage = "LiftedSquat2Kg?",
-  addEllipses = T,
-  geom = c("point"),
-  col.ind = "black",
-  pointsize = 1,
-  alpha.ind = 0.3,
-  repel = T)
-fviz_mfa_ind(
-  res.mfa,
-  axes = ds,
-  habillage = "LiftedSquat3Kg?",
-  addEllipses = T,
-  geom = c("point"),
-  col.ind = "black",
-  pointsize = 1,
-  alpha.ind = 0.3,
-  repel = T)
-```
-
-
-```{r}
-# Check individuals projections to a combined vector
+# Check individuals projections to a combined vector of fails
 
 dir <- (
   res.mfa$quali.var$coord["LiftedSquat1Kg?_Not lifted",] +
@@ -678,28 +641,46 @@ library(plot3Drgl)
 
 set.seed(0)
 
-ds <- c(2, 3, 4)
+ds <- c(1, 2, 3)
 
 # Individuals (sample ~10%)
 smpl <- sample(rownames(res.mfa$ind$coord), 30000)
 px <- res.mfa$ind$coord[smpl,ds[1]]
 py <- res.mfa$ind$coord[smpl,ds[2]]
 pz <- res.mfa$ind$coord[smpl,ds[3]]
-scatter3D(px, py, pz, colvar = proj[smpl,], pch = 20, cex = 0.5, bty = "n")
+colvar <- as.integer(df_mfa[rownames(res.mfa$ind$coord),][smpl,]$Place)
+col <- hcl.colors(length(levels(df_mfa$Place)), palette = "viridis")
+scatter3D(px, py, pz, col=col, colvar = colvar, pch = 20, cex = 0.5, bty = "n")
 
-# Variables
+# Dims
+zeros <- c(0, 0, 0)
+ax <- c(5, 0, 0)
+ay <- c(0, 5, 0)
+az <- c(0, 0, 5)
+arrows3D(zeros, zeros, zeros, ax, ay, az, bty = "n", lwd = 2, col = "red", add=T)
+text3D(ax, ay, az, c("D1", "D2", "D3"), bty = "n", col = "red", add=T)
+
+# Qualitative variables
 zeros <- rep(0, nrow(res.mfa$quali.var$coord))
 ax <- res.mfa$quali.var$coord[,ds[1]]
 ay <- res.mfa$quali.var$coord[,ds[2]]
 az <- res.mfa$quali.var$coord[,ds[3]]
-arrows3D(zeros, zeros, zeros, ax, ay, az, add=T, bty = "n")
+arrows3D(zeros, zeros, zeros, ax, ay, az, bty = "n", lwd = 2, add=T)
 text3D(ax, ay, az, rownames(res.mfa$quali.var$coord), add=T, bty = "n")
+
+# Quantitative variables
+zeros <- rep(0, nrow(res.mfa$quanti.var$coord))
+ax <- res.mfa$quanti.var$coord[,ds[1]]
+ay <- res.mfa$quanti.var$coord[,ds[2]]
+az <- res.mfa$quanti.var$coord[,ds[3]]
+arrows3D(zeros, zeros, zeros, ax, ay, az, bty = "n", lwd = 2, add=T)
+text3D(ax, ay, az, rownames(res.mfa$quanti.var$coord), add=T, bty = "n")
 
 plotrgl()
 ```
 
 ```{r}
-fviz_mfa_ind(res.mfa, partial = c("1", "2", "3"), geom = c("point"), alpha.ind = 0.3)
+# fviz_mfa_ind(res.mfa, partial = c("1", "2", "3"), geom = c("point"), alpha.ind = 0.3)
 ```
 
 

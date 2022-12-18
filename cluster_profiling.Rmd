@@ -19,6 +19,10 @@ library(FactoMineR)
 ```{r}
 df <- readRDS("hcluster/hcluster_2019-p25-tr-k4.rds")
 
+# for(v in 34:42) {
+#   levels(df[,v]) <- c("fail", "success")
+# }
+
 dim(df)
 names(df)
 
@@ -33,25 +37,12 @@ names(df[,cluster_vars])
 ```{r}
 for (v in c("Age", "BodyweightKg")) {
   p <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
-    geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
+    geom_violin(adjust=1.5) +
+    geom_boxplot(width=0.2, outlier.shape=1, outlier.color="black", outlier.size=2) +
     # geom_jitter(color="black", width=0.2, size=0.4, alpha=0.2) +
     geom_hline(yintercept=mean(df[,v]), linetype="dashed", color = "red", size=1) +
     theme_minimal()
   print(p)
-}
-```
-
-
-```{r}
-for (cat in c("Squat", "Bench", "Deadlift")) {
-  for (att in c("", "Inc1", "Inc2")) {
-    v <- paste0(cat, att)
-    p <- ggplot(df, aes_string(x="cluster", y=v, fill="cluster")) +
-      geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
-      # geom_jitter(color="black", width=0.2, size=0.4, alpha=0.2) +
-      geom_hline(yintercept=mean(df[,v]), linetype="dashed", color = "red", size=1)
-    print(p)
-  }
 }
 ```
 
@@ -81,7 +72,8 @@ for (cat in c("Squat", "Bench", "Deadlift")) {
     names_to=ncat
   )
   p <- ggplot(dfm, aes_string(x=ncat, y="value")) +
-    geom_boxplot(outlier.shape=1, outlier.color="black", outlier.size=2) +
+    geom_violin(adjust=1.5) +
+    # geom_boxplot(width=0.2, outlier.shape=1, outlier.color="black", outlier.size=2) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
     facet_wrap(~cluster)
   print(p)
@@ -105,7 +97,6 @@ for (cat in c("Squat", "Bench", "Deadlift")) {
 ## Statistical profiling
 
 ```{r}
-options(digits=7)
 dfcl <- df[,c(cluster_vars, 17, 55)]
 names(dfcl)
 catdes(dfcl, 24, proba = 0.01)

@@ -42,15 +42,15 @@ df <- df %>%
 ```{r}
 set.seed(42)
 # Select the important features, make lowercase
-df_selected <- df %>% dplyr::select(Age, BodyweightKg, WeightTriedSquat1Kg, WeightTriedSquat2Kg, WeightTriedSquat3Kg,
-WeightTriedBench1Kg, WeightTriedBench2Kg, WeightTriedBench3Kg,
-WeightTriedDeadlift1Kg, WeightTriedDeadlift2Kg, WeightTriedDeadlift3Kg, Place) %>%
+df_selected <- df %>% dplyr::select(Age, BodyweightKg, WeightTriedSquat1Kg, WeightTriedSquat2Kg,
+WeightTriedBench1Kg, WeightTriedBench2Kg,
+WeightTriedDeadlift1Kg, WeightTriedDeadlift2Kg, Place) %>%
   mutate_if(is.character, as_factor) %>%
   clean_names()
 
 # If non multicolinearity, we have to select age + bodyweight_kg + any of the lifted weights
 
-num_var = c("age", "bodyweight_kg", "weight_tried_squat1kg", "weight_tried_squat2kg", "weight_tried_squat3kg", "weight_tried_bench1kg", "weight_tried_bench2kg", "weight_tried_bench3kg", "weight_tried_deadlift1kg", "weight_tried_deadlift2kg", "weight_tried_deadlift3kg")
+num_var = c("age", "bodyweight_kg", "weight_tried_squat1kg", "weight_tried_squat2kg", "weight_tried_bench1kg", "weight_tried_bench2kg", "weight_tried_deadlift1kg", "weight_tried_deadlift2kg")
 
 target = "place"
 

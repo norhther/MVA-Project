@@ -10,11 +10,12 @@ library(tidyverse)
 library(tidymodels)
 library(lubridate)
 #library(janitor)
+library(themis)
 
 library(dendextend)
 
 # Load data
-# setwd("/home/martin/personal/Master/MVA/project/MVA-Project")
+setwd("/home/martin/personal/Master/MVA/project/MVA-Project")
 df <- read_csv("df_preprocessed.csv")
 
 # Transform to factors
@@ -73,16 +74,18 @@ nrow(df_1y)
 
 # No sex distinction
 df_1ym = df_1y
-#df_1ym = df_1y[df_1y$Sex == "M",]
+
 
 
 # Sample only 25% of values
 set.seed(12345)
 getnrow = as.integer(nrow(df_1ym)*0.25)
+
 # Balance Male vs Female
 sex_prop <- sum(df_1ym$Sex == "F")/sum(df_1ym$Sex == "M")
 prob <- ifelse(df_1ym$Sex == "M", max(1.0, sex_prop), max(1.0, 1.0/sex_prop))
 df_short <- df_1ym[sample(1:nrow(df_1ym), getnrow, prob=prob), ] 
+
 
 names(df_short)
 nrow(df_short)
@@ -92,6 +95,7 @@ summary(df_short)
 dfc1 <- df_short[,c(5,6, 2,20, 25:33,34:42)] # Absolute value
 # dfc1 <- df_short[,c(5,6, 2,20, 43:51,34:42)] # Increases
 
+dfnum = df_short[,c(5,6,25:33)]
 summary(dfc1)
 
 # Comput distances
@@ -112,7 +116,8 @@ for (m in c("ward.D", "ward.D2", "single")){
 }
 
 # Find k
-indices <- c("frey", "mcclain", "cindex", "silhouette", "dunn")
+#indices <- c("frey", "mcclain", "cindex", "silhouette", "dunn")
+indices <- c("cindex")
 particiones <- vector()
 for(i in 1:length(indices)){
   print(indices[i])
@@ -125,6 +130,17 @@ particiones
 # For dfc1:     1          2          6          2          2
 # For dfc3:     1          2          6          4          3
 
+sil2 <- silhouette(cutree(aggl.clust1,k=2),as.dist(gower.dist1))
+sil4 <- silhouette(cutree(aggl.clust1,k=4),as.dist(gower.dist1))
+
+## Save plots
+#pdf("silhouette2-plot.pdf")
+#plot(sil2)
+#dev.off()
+#pdf("silhouette4-plot.pdf")
+#plot(sil4)
+#dev.off()
+
 # Cutting the tree
 df_short$cluster = as.factor(cutree(tree=aggl.clust1, k=4))
 gather_short <- tidyr::gather(data=df_short,
@@ -132,7 +148,7 @@ gather_short <- tidyr::gather(data=df_short,
                                 cluster)
 
 p <- ggplot(gather_short) + aes(x=factor(Cluster),fill=Place) +
-    geom_bar() +
+    geom_bar(position="fill") +
     facet_grid(~Method) 
 p
 
@@ -146,3 +162,61 @@ ncol(df_foo)
 catdes(df_foo,24)
 
 saveRDS(as.data.frame(df_short), file = "hcluster/hcluster_2019-p25-tr-k4.rds")
+
+
+
+####
+# Male Female Analisys
+dfs_m = df_short[df_short$Sex == "M",]
+dfs_f = df_short[df_short$Sex == "F",]
+
+#dfc1 <- df_short[,c(5,6, 2,20, 25:33,34:42)] # Absolute value
+dfc_m = dfs_m[,c(5,6, 2,20, 25:33,34:42)]
+dfc_f = dfs_f[,c(5,6, 2,20, 25:33,34:42)]
+
+
+gower.dist_m <- daisy(dfc_m, metric = c("gower"))
+
+# Cluster
+m="ward.D2" ; aggl.clust_m <- hclust(gower.dist_m, method = m)
+#m="ward.D" ; aggl.clust_f <- hclust(gower.dist_f, method = m)
+
+plot(aggl.clust_m)
+rect.hclust(aggl.clust_m, k=9, border=11)
+
+gdist <- gower.dist_m
+particiones <- vector() ; indices <- c("silhouette") #, "dunn")
+for(i in 1:length(indices)){
+  print(indices[i])
+  sel_k<-NbClust(diss=gdist,distance=NULL,min.nc=3,max.nc=9,method="ward.D",index=indices[i])
+  particiones[i]<-max(sel_k$Best.partition)
+}
+names(particiones) <- indices ; particiones
+
+
+# Cut and plot
+dfs_m$cluster = as.factor(cutree(tree=aggl.clust_m, k=9))
+gather_short <- tidyr::gather(data=dfs_m,
+                              key="Method",value="Cluster",
+                              cluster)
+
+p <- ggplot(gather_short) + aes(x=factor(Cluster),fill=Place) +
+  geom_bar(position="fill") +
+  facet_grid(~Method) 
+p
+
+df_foo <- dfs_m[,c(5,6, 2,20, 7:15)]
+df_foo$Place <- dfs_m$Place
+df_foo$cluster <- dfs_m$cluster
+ncol(df_foo)
+catdes(df_foo,15,proba = 0.01)
+
+
+# Save plots
+sil <- silhouette(cutree(aggl.clust_m,k=9),as.dist(gower.dist_m))
+pdf("silhouette-plot.pdf")
+plot(sil)
+dev.off()
+
+
+

@@ -1,0 +1,217 @@
+---
+title: "LDA"
+author: "MVA project group 5"
+date: "2022-12-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## We initialize with the same structure as the trees and the same training and test
+```{r, prompt=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(recipes)
+library(modeldata)
+library(themis)
+library(caret)
+library(cvms)
+library(MASS)
+```
+
+```{r, prompt=F}
+df <- read_csv("/Users/d2000/Desktop/MVA/MVA-Project/df_preprocessed.csv")
+```
+
+## Three first places and others
+```{r}
+
+df %>% 
+  mutate(Place = fct_lump(Place, 3)) %>% 
+  count(Place)
+
+df <- df %>%
+  mutate(Place = fct_lump(Place, 3))
+
+```
+## Create a train/test split of 75% for training, stratifying by Place
+## We use a smote algorithm to generate synthetic data to avoid overfitting on majority classes.
+```{r}
+set.seed(42)
+# Select the important features, make lowercase
+df_selected <- df %>% dplyr::select(Age, BodyweightKg, WeightTriedSquat1Kg, WeightTriedSquat2Kg, WeightTriedSquat3Kg,
+WeightTriedBench1Kg, WeightTriedBench2Kg, WeightTriedBench3Kg,
+WeightTriedDeadlift1Kg, WeightTriedDeadlift2Kg, WeightTriedDeadlift3Kg, Place) %>%
+  mutate_if(is.character, as_factor) %>%
+  clean_names()
+
+# If non multicolinearity, we have to select age + bodyweight_kg + any of the lifted weights
+
+num_var = c("age", "bodyweight_kg", "weight_tried_squat1kg", "weight_tried_squat2kg", "weight_tried_squat3kg", "weight_tried_bench1kg", "weight_tried_bench2kg", "weight_tried_bench3kg", "weight_tried_deadlift1kg", "weight_tried_deadlift2kg", "weight_tried_deadlift3kg")
+
+target = "place"
+
+# We scale
+df_selected[, num_var] = scale(df_selected[, num_var])
+df_split <- initial_split(df_selected, strata = place)
+df_train_original <- training(df_split)
+df_test <- testing(df_split)
+
+up_rec <- recipe(place ~ ., data = df_train_original) %>%
+  step_smote(place) %>%
+  prep()
+
+df_train <- juice(up_rec)
+```
+
+
+##Fit lda obtaining the parameters
+```{r}
+set.seed(42)
+lda.fit <-lda(df_train$place ~ ., data=df_train)
+lda.fit
+```
+
+## We predict the train and we obtain the confusion matrix
+```{r}
+pred.place_train = predict(lda.fit, df_train_original)
+table(pred.place_train$class, df_train_original$place)
+```
+
+## Metrics for the train
+```{r}
+pred_train.accuracy = round(mean(pred.place_train$class == df_train_original$place)*100,2)
+pred_train.accuracy
+```
+###### Confusion matrix train
+```{r}
+cm <- confusionMatrix(pred.place_train$class, df_train_original$place)
+cm
+
+plot_confusion_matrix(as_tibble(cm$table),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = F,
+                      add_col_percentages = F,
+                      palette = "Reds")
+
+```
+
+## F1 train
+```{r}
+confusionMatrix(pred.place_train$class, df_train_original$place, mode = "everything", positive="1")
+```
+
+## We predict the test and we obtain the confusion matrix
+```{r}
+pred.place = predict(lda.fit, df_test)
+table(pred.place$class, df_test$place)
+```
+## We observe that the metric is similar to the one of the train
+```{r}
+pred.accuracy = round(mean(pred.place$class == df_test$place)*100,2)
+pred.accuracy
+```
+
+###### Confusion matrix train
+```{r}
+cm_test <- confusionMatrix(pred.place$class, df_test$place)
+cm_test
+
+plot_confusion_matrix(as_tibble(cm_test$table),
+                      target_col = "Reference",
+                      prediction_col = "Prediction",
+                      counts_col = "n",
+                      add_row_percentages = F,
+                      add_col_percentages = F,
+                      palette = "Reds")
+
+```
+## F1 test
+```{r}
+confusionMatrix(pred.place$class, df_test$place, mode = "everything", positive="1")
+```
+
+## Plots with representants of each group if needed
+```{r}
+library(lattice)
+
+# all the necessary columns
+lda_plot <- cbind(df_test, pred.place$x)
+
+# Here we will do a subsample of 500 elements of each class
+first = lda_plot[(lda_plot$place == 1),]
+
+second = lda_plot[(lda_plot$place == 2),]
+
+third = lda_plot[(lda_plot$place == 3),]
+
+other = lda_plot[(lda_plot$place == "Other"),]
+
+sample <- rbind(first[1:500,], second[1:500,], third[1:500,], other[1:500,])
+
+ggplot(lda_plot, aes(LD1, LD2)) +
+  geom_point(aes(color = place)) + stat_ellipse(geom = "polygon",
+               aes(fill = place), 
+               alpha = 0.25)
+```
+# Boxplot of LD1
+```{r}
+ggplot(data = lda_plot, aes(x = place, y = LD1)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars 
+                    width = 0.2) +
+       geom_boxplot(fill = "#4271AE", colour = "#1F3552", # Colors
+                    alpha = 0.9, outlier.colour = "red") +
+         coord_cartesian(ylim=c(-0.9, 0.90)) +
+       scale_y_continuous(name = "LD1") +  # Continuous variable label
+       scale_x_discrete(name = "place") +      # Group label
+       ggtitle("LD1 by place position") + # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25))
+
+```
+# Boxplot of LD2
+```{r}
+# Boxplot by group
+ggplot(data = lda_plot, aes(x = place, y = LD2)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars 
+                    width = 0.2) +
+       geom_boxplot(fill = "#4271AE", colour = "#1F3552", # Colors
+                    alpha = 0.9, outlier.colour = "red", outlier.shape=NA) +
+       coord_cartesian(ylim=c(-0.9, 0.75)) +
+       scale_y_continuous(name = "LD2") +  # Continuous variable label
+       scale_x_discrete(name = "place") +      # Group label
+       ggtitle("LD2 by place position") + # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25))
+        
+```
+
+# Boxplot of LD3
+```{r}
+# Boxplot by group
+ggplot(data = lda_plot, aes(x = place, y = LD3)) +
+       stat_boxplot(geom = "errorbar", # Boxplot with error bars 
+                    width = 0.2) +
+       geom_boxplot(fill = "#4271AE", colour = "#1F3552", # Colors
+                    alpha = 0.9, outlier.colour = "red") +
+         coord_cartesian(ylim=c(-0.9, 0.75)) +
+       scale_y_continuous(name = "LD3") +  # Continuous variable label
+       scale_x_discrete(name = "place") +      # Group label
+       ggtitle("LD3 by place position") + # Plot title
+       theme(axis.line = element_line(colour = "black", # Theme customization
+                                      size = 0.25))
+```
+
+
+
+
+# Check multicolinearity
+```{r}
+library(faraway)
+vif(df_train_original[, num_var])
+```

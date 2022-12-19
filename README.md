@@ -15,12 +15,14 @@ All scripts included in this repository have been used to process the data, gene
 - dataViz.Rmd -> Complementary R Markdown script used to visualize with the data exploration and visualization of the results. Includes the MCA and MFA analysis and their
 explorations.
 
-- pca. R -> Exploratory script with all attempts to preform the PCA on the dataset. Contains test with different competition result representations.
+- pca.R -> Exploratory script with all attempts to preform the PCA on the dataset. Contains test with different competition result representations.
 
 - associaton_rules.Rmd -> R Markdown with the execution of the a priori algorithm to find the association rules.
 
-- her-clust-crossVal_MF. R -> Hierarchical clustering exploration. Tests where performed for different sets of variables. Includes validations for the number of clusters selected and small analysis on only Male lifters.
+- her-clust-crossVal_MF.R -> Hierarchical clustering exploration. Tests where performed for different sets of variables. Includes validations for the number of clusters selected and small analysis on only Male lifters.
 
 - cluster_profiling.Rmd -> R Markdown used to generate visualizations for cluster profiling and also numerical profiling.
 
 - decision_trees.Rmd -> R Markdown with all decision trees and evaluations performed.
+
+- lda_final.Rmd -> R Markdown with all code to perform the LDA analysis.
